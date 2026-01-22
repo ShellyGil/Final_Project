@@ -96,7 +96,7 @@
         #mod-analyst .settings-row { display: flex; gap: 15px; width: 100%; max-width: 900px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; flex-wrap: wrap;}
         #mod-analyst .setting-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #555; }
         #mod-analyst .setting-group input, select { padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
-        #mod-analyst #an-plot-area { background: #fff; width: 100%; max-width: 900px; min-height: 500px; border: 1px solid #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 10px; }
+        #mod-analyst #an-plot-area { background: #fff; width: 100%; max-width: 900px; min-height: 500px; border: 1px solid #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
         #mod-analyst #an-stats-area { background: #333; color: #2ecc71; font-family: monospace; width: 100%; max-width: 900px; padding: 15px; border-radius: 6px; margin-top: 20px; white-space: pre-wrap; display: none; }
 
         /* --- MODULE C: ILLUSTRATOR STYLES (Scoped with #mod-illust) --- */
@@ -220,7 +220,7 @@
                 <div class="setting-group" style="flex: 1;">
                     <label>Mode</label>
                     <select id="an-mode" style="width:100%">
-                        <option value="ratio">Group Comparison (4 Bars)</option>
+                        <option value="ratio">Group Comparison</option>
                         <option value="raw">Raw Data</option>
                     </select>
                 </div>
@@ -232,10 +232,14 @@
                     <label>Y-Label</label>
                     <input type="text" id="an-ylabel" value="Index %">
                 </div>
-                <input type="hidden" id="an-fs-title" value="16">
-                <input type="hidden" id="an-fs-label" value="12">
-                <input type="hidden" id="an-fs-tick" value="10">
-                <input type="hidden" id="an-fs-legend" value="10">
+                <div class="setting-group">
+                    <label>Title Size</label>
+                    <input type="number" id="an-fs-title" value="16" style="width:50px">
+                </div>
+                 <div class="setting-group">
+                    <label>Label Size</label>
+                    <input type="number" id="an-fs-label" value="12" style="width:50px">
+                </div>
             </div>
 
             <div id="an-plot-area">
@@ -276,9 +280,13 @@
             <h2>3. Finalize</h2>
             <div class="config-row">
                 <div class="input-group"><label>Scale (µm)</label><input type="number" id="fg-scale" value="100" style="width:60px"></div>
-                <div class="input-group"><label>Px/µm</label><input type="number" id="fg-px" value="2.5" style="width:60px"></div>
-                <div class="input-group"><label>Label</label><input type="text" id="fg-lbl" value="B" style="width:40px"></div>
-                <div class="input-group"><label>Bar Color</label><input type="color" id="fg-color" value="#ffff00" style="height:30px"></div>
+                <div class="input-group"><label>Px/µm</label><input type="number" id="fg-px" value="2.5" step="0.1" style="width:60px"></div>
+                <div class="input-group"><label>Main Label</label><input type="text" id="fg-lbl" value="B" style="width:40px"></div>
+                <div class="input-group"><label>Header Size</label><input type="number" id="fg-fs-head" value="48" style="width:50px"></div>
+                <div class="input-group"><label>Label Size</label><input type="number" id="fg-fs-lbl" value="36" style="width:50px"></div>
+                <div class="input-group"><label>Bar H (%)</label><input type="number" id="fg-sb-h" value="3" style="width:50px"></div>
+                <div class="input-group"><label>Color</label><input type="color" id="fg-color" value="#ffff00" style="height:30px"></div>
+                
                 <button onclick="FigureGen.generateFigure()">Render Figure</button>
                 <button onclick="FigureGen.downloadFigure()" style="background:#8e44ad">Download PNG</button>
             </div>
@@ -301,7 +309,7 @@
             btn.classList.add('active');
         }
 
-        // --- MODULE A: QUANTIFIER LOGIC (Encapsulated) ---
+        // --- MODULE A: QUANTIFIER LOGIC (FIXED) ---
         const Quantifier = (() => {
             let files = [], currentIndex = 0;
             let originalImageData = null;
@@ -345,6 +353,7 @@
                 view.onmousedown = onMouseDown;
                 view.onmousemove = onMouseMove;
                 view.onmouseup = () => { isDragging = false; };
+                view.oncontextmenu = (e) => { e.preventDefault(); return false; }; 
             };
 
             async function handleFiles(fileList) {
@@ -383,7 +392,7 @@
                     finalImageData = tCtx.getImageData(0,0, tCanvas.width, tCanvas.height);
                 }
 
-                autoNormalize(finalImageData); // Fix black images
+                autoNormalize(finalImageData); 
                 originalImageData = finalImageData;
                 processedCanvas.width = originalImageData.width;
                 processedCanvas.height = originalImageData.height;
@@ -422,7 +431,6 @@
                 if (!originalImageData) return;
                 const pCtx = processedCanvas.getContext('2d');
                 
-                // Apply filters (simple version)
                 const w = processedCanvas.width, h = processedCanvas.height;
                 const raw = originalImageData.data;
                 const out = pCtx.createImageData(w, h);
@@ -431,7 +439,7 @@
                 const contrastFactor = (259 * (params.contrast * 255 + 255)) / (255 * (259 - params.contrast * 255));
                 
                 for(let i=0; i<raw.length; i+=4) {
-                    let v = raw[i]; // Assuming grayscale
+                    let v = raw[i]; 
                     v = v * params.brightness;
                     v = contrastFactor * (v - 128) + 128;
                     v = Math.min(255, Math.max(0, v));
@@ -439,7 +447,6 @@
                     dat[i+3] = 255;
                 }
                 
-                // Show Threshold Overlay
                 if(els['q-chk-red'].checked) {
                     let thresh = parseFloat(els['q-manual-cutoff'].value);
                     if(els['q-algo-select'].value === 'otsu') thresh = getOtsu(dat);
@@ -450,7 +457,6 @@
                 
                 pCtx.putImageData(out, 0, 0);
 
-                // Draw to screen
                 const c = els['q-imgCanvas'];
                 const o = els['q-overlayCanvas'];
                 const cont = els['q-container'];
@@ -483,6 +489,7 @@
                 ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
                 for(let i=1; i<polyPoints.length; i++) ctx.lineTo(polyPoints[i].x, polyPoints[i].y);
                 ctx.strokeStyle = "yellow"; ctx.lineWidth = 2/scale; ctx.stroke();
+                
                 if(mode==='DRAW') {
                      ctx.fillStyle = "cyan";
                      for(let p of polyPoints) { ctx.beginPath(); ctx.arc(p.x, p.y, 4/scale, 0, Math.PI*2); ctx.fill(); }
@@ -490,7 +497,6 @@
                 ctx.restore();
             }
 
-            // Utils
             function getOtsu(data) {
                 let hist = new Array(256).fill(0);
                 for(let i=0; i<data.length; i+=4) hist[data[i]]++;
@@ -516,53 +522,92 @@
                 render();
             }
 
-            // Interaction
-            let isDragging = false, dragStart = {};
             function onMouseDown(e) {
                 if(e.button===2 && mode==='DRAW' && polyPoints.length>2) {
-                    polyPoints.push(polyPoints[0]); els['q-btn-calc'].disabled = false; render(); return;
+                    polyPoints.push(polyPoints[0]); 
+                    els['q-btn-calc'].disabled = false; 
+                    render(); 
+                    return;
                 }
+                
                 if(mode==='DRAW') {
                     const r = els['q-imgCanvas'].getBoundingClientRect();
                     const rawX = (e.clientX - r.left - (r.width/2 + panX))/scale + processedCanvas.width/2;
                     const rawY = (e.clientY - r.top - (r.height/2 + panY))/scale + processedCanvas.height/2;
-                    polyPoints.push({x:rawX, y:rawY}); render();
+                    polyPoints.push({x:rawX, y:rawY});
+                    if(polyPoints.length >= 3) els['q-btn-calc'].disabled = false;
+                    render();
                 } else {
                     isDragging=true; dragStart={x:e.clientX-panX, y:e.clientY-panY};
                 }
             }
+            let isDragging = false, dragStart = {};
             function onMouseMove(e) { if(isDragging && mode==='VIEW') { panX = e.clientX-dragStart.x; panY = e.clientY-dragStart.y; render(); } }
+
+            function isInside(x, y, poly) {
+                let inside = false;
+                for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                    const xi = poly[i].x, yi = poly[i].y;
+                    const xj = poly[j].x, yj = poly[j].y;
+                    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            }
 
             function calculateIndex() {
                 if(!polyPoints.length) return;
-                // Simplified ROI check logic for brevity
-                const pCtx = processedCanvas.getContext('2d');
-                const d = pCtx.getImageData(0,0,processedCanvas.width,processedCanvas.height).data;
-                // For demo, just use bounding box to sample pixels (production code would use Ray Casting for poly)
-                // Assuming poly is simple box for this minimized version or check bounding box
-                let valid = [], thresh = parseFloat(els['q-manual-cutoff'].value);
-                if(els['q-algo-select'].value === 'otsu') thresh = getOtsu(d);
+                els['q-result-display'].innerText = "Calculating...";
                 
-                // --- Simple Point in Poly Logic ---
-                const w = processedCanvas.width;
-                let minX=w, maxX=0, minY=processedCanvas.height, maxY=0;
-                polyPoints.forEach(p => { if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; });
-                
-                for(let y=Math.floor(minX); y<Math.ceil(maxX); y++) {
-                     // Just a sample for simplicity in this merged file. 
-                     // Real logic is: Iterate all pixels, check ray-cast. 
-                     // We will assume rectangular approximation for speed in this demo snippet.
+                const p0 = polyPoints[0];
+                const pN = polyPoints[polyPoints.length-1];
+                if(Math.abs(p0.x - pN.x) > 1 || Math.abs(p0.y - pN.y) > 1) {
+                    polyPoints.push(p0);
+                    render();
                 }
-                // Mock calculation based on center pixel for robustness in this simplified view
-                let count=0, total=0;
-                for(let i=0; i<d.length; i+=40) { // sparse sample
-                     if(d[i] > thresh) count++;
-                     total++;
-                }
-                let res = (count/total)*100;
-                lastCalcValue = res;
-                els['q-result-display'].innerText = res.toFixed(2)+"%";
-                els['q-btn-save'].disabled = false;
+
+                setTimeout(() => {
+                    const pCtx = processedCanvas.getContext('2d');
+                    const d = pCtx.getImageData(0,0,processedCanvas.width,processedCanvas.height).data;
+                    const w = processedCanvas.width;
+                    
+                    let validPixels = 0;
+                    let signalPixels = 0;
+                    
+                    let thresh = parseFloat(els['q-manual-cutoff'].value);
+                    if(els['q-algo-select'].value === 'otsu') thresh = getOtsu(d);
+
+                    let minX=w, maxX=0, minY=processedCanvas.height, maxY=0;
+                    polyPoints.forEach(p => { 
+                        if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; 
+                        if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; 
+                    });
+                    
+                    minX = Math.floor(Math.max(0, minX));
+                    maxX = Math.ceil(Math.min(w, maxX));
+                    minY = Math.floor(Math.max(0, minY));
+                    maxY = Math.ceil(Math.min(processedCanvas.height, maxY));
+
+                    for(let y=minY; y<maxY; y++) {
+                        for(let x=minX; x<maxX; x++) {
+                            if(isInside(x, y, polyPoints)) {
+                                validPixels++;
+                                const idx = (y * w + x) * 4;
+                                if(d[idx] > thresh) signalPixels++;
+                            }
+                        }
+                    }
+
+                    if(validPixels === 0) {
+                        els['q-result-display'].innerText = "Err: Empty ROI";
+                        return;
+                    }
+
+                    let res = (signalPixels / validPixels) * 100;
+                    lastCalcValue = res;
+                    els['q-result-display'].innerText = res.toFixed(4)+"%";
+                    els['q-btn-save'].disabled = false;
+                }, 10);
             }
 
             function saveAndNext() {
@@ -575,13 +620,12 @@
                 a.download = "results.txt"; a.click();
             }
 
-            // Init
             setTimeout(initDOM, 500);
             return {};
         })();
 
 
-        // --- MODULE C: ILLUSTRATOR LOGIC (Encapsulated) ---
+        // --- MODULE C: ILLUSTRATOR LOGIC (Restored Features) ---
         const FigureGen = (() => {
             let state = { cols: 4, rows: 2 };
             
@@ -638,7 +682,12 @@
             
             async function generateFigure() {
                 document.getElementById('fg-loading').style.display='inline';
-                await new Promise(r=>setTimeout(r,50)); // UI Breath
+                await new Promise(r=>setTimeout(r,50)); 
+                
+                const merge = document.getElementById('fg-merge').checked;
+                const fsHead = parseInt(document.getElementById('fg-fs-head').value);
+                const fsLbl = parseInt(document.getElementById('fg-fs-lbl').value);
+                const sbPct = parseFloat(document.getElementById('fg-sb-h').value) / 100;
                 
                 // 1. Scan for base size
                 let baseW=300, baseH=300;
@@ -651,19 +700,20 @@
                 
                 const cvs = document.getElementById('fg-mainCanvas');
                 const ctx = cvs.getContext('2d');
-                const merge = document.getElementById('fg-merge').checked;
                 const totRows = merge ? state.rows+1 : state.rows;
-                const headH = 50;
+                const headH = fsHead * 2;
+                const pad = Math.round(baseW * 0.02);
                 
-                cvs.width = state.cols * baseW;
-                cvs.height = headH + (totRows * baseH);
+                cvs.width = (state.cols * baseW) + ((state.cols-1)*pad);
+                cvs.height = headH + (totRows * baseH) + ((totRows-1)*pad);
                 
                 ctx.fillStyle="white"; ctx.fillRect(0,0,cvs.width,cvs.height);
                 
                 // Draw Headers
-                ctx.fillStyle="black"; ctx.font="bold 30px Arial"; ctx.textAlign="center";
+                ctx.fillStyle="black"; ctx.font=`bold ${fsHead}px Arial`; ctx.textAlign="center";
                 for(let c=0; c<state.cols; c++) {
-                    ctx.fillText(document.getElementById(`fg-head-${c}`).value, c*baseW + baseW/2, 35);
+                    const x = c*(baseW+pad) + baseW/2;
+                    ctx.fillText(document.getElementById(`fg-head-${c}`).value, x, headH/2 + 10);
                 }
                 
                 // Draw Images
@@ -671,17 +721,16 @@
                     let mergeBuf = new Float32Array(baseW*baseH*3);
                     for(let r=0; r<state.rows; r++) {
                         const p = await getPixels(`fg-file-${r}-${c}`);
-                        const y = headH + r*baseH;
-                        const x = c*baseW;
+                        const y = headH + r*(baseH+pad);
+                        const x = c*(baseW+pad);
                         
                         if(p) {
-                            // Tint
                             const hex = document.getElementById(`fg-rcol-${r}`).value;
                             const rgb = [parseInt(hex.slice(1,3),16)/255, parseInt(hex.slice(3,5),16)/255, parseInt(hex.slice(5,7),16)/255];
                             
                             const iDat = ctx.createImageData(baseW, baseH);
                             for(let i=0; i<p.d.length; i+=4) {
-                                let val = p.d[i]; // gray
+                                let val = p.d[i]; 
                                 iDat.data[i] = val*rgb[0];
                                 iDat.data[i+1] = val*rgb[1];
                                 iDat.data[i+2] = val*rgb[2];
@@ -691,16 +740,13 @@
                                     mergeBuf[idx]+=iDat.data[i]; mergeBuf[idx+1]+=iDat.data[i+1]; mergeBuf[idx+2]+=iDat.data[i+2];
                                 }
                             }
-                            // Scale down if needed (simplified)
-                            // We assume baseW matches. If not, simple drawImage stretch
                             const tCan = document.createElement('canvas'); tCan.width=baseW; tCan.height=baseH;
                             tCan.getContext('2d').putImageData(iDat,0,0);
                             ctx.drawImage(tCan, x, y, baseW, baseH);
                             
-                            // Label
                             if(c===0) {
-                                ctx.fillStyle="white"; ctx.font="30px Arial"; ctx.textAlign="left";
-                                ctx.fillText(document.getElementById(`fg-rlbl-${r}`).value, x+10, y+40);
+                                ctx.fillStyle="white"; ctx.font=`bold ${fsLbl}px Arial`; ctx.textAlign="left"; ctx.textBaseline="top";
+                                ctx.fillText(document.getElementById(`fg-rlbl-${r}`).value, x+20, y+20);
                             }
                         }
                     }
@@ -712,19 +758,31 @@
                             mDat.data[i+2] = Math.min(255, mergeBuf[k+2]);
                             mDat.data[i+3] = 255;
                         }
-                        const y = headH + state.rows*baseH;
+                        const y = headH + state.rows*(baseH+pad);
                         const tCan = document.createElement('canvas'); tCan.width=baseW; tCan.height=baseH;
                         tCan.getContext('2d').putImageData(mDat,0,0);
-                        ctx.drawImage(tCan, c*baseW, y, baseW, baseH);
+                        ctx.drawImage(tCan, c*(baseW+pad), y, baseW, baseH);
+                        if(c===0) {
+                             ctx.fillStyle="white"; ctx.font=`bold ${fsLbl}px Arial`; ctx.textAlign="left"; ctx.textBaseline="top";
+                             ctx.fillText("Merge", c*(baseW+pad)+20, y+20);
+                        }
                     }
                 }
                 
                 // Scale Bar
                 const um = parseInt(document.getElementById('fg-scale').value);
                 const px = parseFloat(document.getElementById('fg-px').value);
-                const w = um*px;
+                const barW = um*px;
+                const barH = baseH * sbPct;
                 ctx.fillStyle = document.getElementById('fg-color').value;
-                ctx.fillRect(cvs.width-w-20, cvs.height-30, w, 10);
+                ctx.fillRect(cvs.width-barW-(baseW*0.05), cvs.height-barH-(baseH*0.05), barW, barH);
+                
+                // Main Label (B)
+                const mainLbl = document.getElementById('fg-lbl').value;
+                if(mainLbl) {
+                    ctx.fillStyle="black"; ctx.font=`bold ${fsHead}px Arial`; ctx.textAlign="left"; ctx.textBaseline="top";
+                    ctx.fillText(mainLbl, 0, 0);
+                }
                 
                 document.getElementById('fg-loading').style.display='none';
             }
@@ -749,7 +807,6 @@ from js import document, alert
 from pyodide.ffi import create_proxy
 import io, base64
 
-# Global Storage for Data
 STORE = { "CFA_L": [], "CFA_R": [], "Carr_L": [], "Carr_R": [] }
 NAMES = { "CFA_L": [], "CFA_R": [], "Carr_L": [], "Carr_R": [] }
 
@@ -761,7 +818,6 @@ async def add_files(key, input_id, badge_id):
     for i in range(files.length):
         f = files.item(i)
         raw_name = f.name
-        # Simple parser for the text file outputs
         text = await f.text()
         clean = text.replace(',', ' ').replace('\t', ' ')
         tokens = clean.split()
@@ -770,7 +826,6 @@ async def add_files(key, input_id, badge_id):
             try: nums.append(float(t))
             except: pass
         if nums:
-            # Average if multiple numbers, usually 1 per file
             STORE[key].append(np.mean(nums))
             NAMES[key].append(raw_name)
 
@@ -779,7 +834,6 @@ async def add_files(key, input_id, badge_id):
     bdg.classList.add("active")
     inp.value = ""
 
-# Wrapper functions for events
 async def add_cfa_l(e): await add_files("CFA_L", "an_in_CFA_L", "bdg_CFA_L")
 async def add_cfa_r(e): await add_files("CFA_R", "an_in_CFA_R", "bdg_CFA_R")
 async def add_carr_l(e): await add_files("Carr_L", "an_in_Carr_L", "bdg_Carr_L")
@@ -791,61 +845,110 @@ def run_analysis(event):
     mode = document.getElementById("an-mode").value
     title = document.getElementById("an-title").value
     ylabel = document.getElementById("an-ylabel").value
+    
+    fs_title = int(document.getElementById("an-fs-title").value)
+    fs_label = int(document.getElementById("an-fs-label").value)
 
     fig = None
     if mode == "ratio":
-        fig = plot_summary(title, ylabel)
+        fig = plot_summary(title, ylabel, fs_title, fs_label)
     else:
-        fig = plot_raw(title, ylabel)
+        fig = plot_raw(title, ylabel, fs_title, fs_label)
     
-    # Render to div
     document.getElementById("an-plot-area").innerHTML = ""
     display(fig, target="an-plot-area", append=False)
 
-def plot_summary(title, ylabel):
+def plot_summary(title, ylabel, fs_t, fs_l):
     cfa_r, cfa_l = STORE["CFA_R"], STORE["CFA_L"]
     carr_r, carr_l = STORE["Carr_R"], STORE["Carr_L"]
     
-    # Fallback if empty
-    if not cfa_r: cfa_r = [0]
-    if not cfa_l: cfa_l = [0]
-    if not carr_r: carr_r = [0]
-    if not carr_l: carr_l = [0]
-
+    # Validation for pairs
+    if len(cfa_r) != len(cfa_l): return alert("CFA groups mismatch (L vs R count)")
+    if len(carr_r) != len(carr_l): return alert("Carr groups mismatch (L vs R count)")
+    
+    # Calculate stats
     means = [np.mean(cfa_r), np.mean(cfa_l), np.mean(carr_r), np.mean(carr_l)]
     sems = [stats.sem(cfa_r), stats.sem(cfa_l), stats.sem(carr_r), stats.sem(carr_l)]
     
-    fig, ax = plt.subplots(figsize=(8, 5))
+    # T-Tests
+    t_cfa, p_cfa = stats.ttest_rel(cfa_r, cfa_l)
+    t_carr, p_carr = stats.ttest_rel(carr_r, carr_l)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
     colors = ["#ccc", "#e74c3c", "#ccc", "#3498db"]
-    ax.bar([0,1,2.5,3.5], means, yerr=sems, capsize=5, color=colors, edgecolor='black')
+    x_pos = [0,1,2.5,3.5]
     
-    # Scatter points
-    ax.scatter([0]*len(cfa_r), cfa_r, color='black', alpha=0.5, zorder=3)
-    ax.scatter([1]*len(cfa_l), cfa_l, color='black', alpha=0.5, zorder=3)
+    # Bars
+    ax.bar(x_pos, means, yerr=sems, capsize=5, color=colors, edgecolor='black', width=0.8)
     
-    ax.set_xticks([0.5, 3])
-    ax.set_xticklabels(["CFA", "Carrageenan"])
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
+    # Scatter & Lines
+    # CFA
+    for i in range(len(cfa_r)):
+        ax.plot([0,1], [cfa_r[i], cfa_l[i]], color='black', alpha=0.3, lw=0.5)
+        ax.scatter([0,1], [cfa_r[i], cfa_l[i]], color='black', alpha=0.5, s=20)
+    # Carr
+    for i in range(len(carr_r)):
+        ax.plot([2.5,3.5], [carr_r[i], carr_l[i]], color='black', alpha=0.3, lw=0.5)
+        ax.scatter([2.5,3.5], [carr_r[i], carr_l[i]], color='black', alpha=0.5, s=20)
+
+    # Brackets Function
+    def draw_bracket(x1, x2, p_val, y_max):
+        h = y_max * 0.05
+        y_top = y_max + h
+        ax.plot([x1, x1, x2, x2], [y_top-h*0.5, y_top, y_top, y_top-h*0.5], lw=1.5, c='black')
+        
+        star = "ns"
+        if p_val < 0.001: star = "***"
+        elif p_val < 0.01: star = "**"
+        elif p_val < 0.05: star = "*"
+        
+        ax.text((x1+x2)/2, y_top, star, ha='center', va='bottom', fontsize=fs_l, fontweight='bold')
+        return y_top
+
+    # Calculate Y-Limits
+    y_max_cfa = max(max(cfa_r), max(cfa_l))
+    y_max_carr = max(max(carr_r), max(carr_l))
+    
+    h1 = draw_bracket(0, 1, p_cfa, y_max_cfa)
+    h2 = draw_bracket(2.5, 3.5, p_carr, y_max_carr)
+    
+    ax.set_ylim(top=max(h1, h2)*1.15)
+    
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(["CFA\nCtrl", "CFA\nInj", "Carr\nCtrl", "Carr\nInj"], fontsize=fs_l)
+    ax.set_title(title, fontsize=fs_t, fontweight='bold')
+    ax.set_ylabel(ylabel, fontsize=fs_l)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     
-    # Stats Text
-    try:
-        t, p_cfa = stats.ttest_ind(cfa_r, cfa_l)
-        stats_div = document.getElementById("an-stats-area")
-        stats_div.style.display = "block"
-        stats_div.innerText = f"CFA P-Value: {p_cfa:.5f}"
-    except: pass
+    stats_div = document.getElementById("an-stats-area")
+    stats_div.style.display = "block"
+    stats_div.innerText = f"CFA P-Value: {p_cfa:.5f}\nCarr P-Value: {p_carr:.5f}"
     
     plt.tight_layout()
     return fig
 
-def plot_raw(title, ylabel):
+def plot_raw(title, ylabel, fs_t, fs_l):
     fig, ax = plt.subplots(figsize=(10, 5))
-    vals = STORE["CFA_L"]
-    ax.bar(range(len(vals)), vals, color='#e74c3c')
-    ax.set_title(title + " (Raw CFA Left)")
+    
+    labels = []
+    vals = []
+    colors = []
+    
+    # Flatten data for raw plot
+    for i, v in enumerate(STORE["CFA_R"]):
+         labels.append(f"CFA_R_{i+1}"); vals.append(v); colors.append("#ccc")
+         labels.append(f"CFA_L_{i+1}"); vals.append(STORE["CFA_L"][i]); colors.append("#e74c3c")
+         
+    ax.bar(range(len(vals)), vals, color=colors, edgecolor='black')
+    ax.set_xticks(range(len(vals)))
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=fs_l*0.8)
+    ax.set_title(title + " (Raw Data)", fontsize=fs_t)
+    ax.set_ylabel(ylabel, fontsize=fs_l)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    plt.tight_layout()
     return fig
 
 def main():
