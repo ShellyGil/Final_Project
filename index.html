@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nociceptor Suite v1.0</title>
+    <title>Nociceptor Innervation Analysis Suite - Shelly Gilad</title>
     
     <link rel="stylesheet" href="https://pyscript.net/releases/2023.05.1/pyscript.css" />
     <script defer src="https://pyscript.net/releases/2023.05.1/pyscript.js"></script>
@@ -14,53 +14,199 @@
     </py-config>
 
     <style>
-        /* This CSS handles the Tab switching without touching your algorithm CSS */
-        .module-container { display: none; }
-        .module-container.active { display: block; }
+        /* --- GLOBAL APP STYLES --- */
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f4f6f8; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        nav { background: #2c3e50; padding: 10px; display: flex; gap: 10px; }
-        .nav-btn { background: #34495e; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
-        .nav-btn.active { background: #3498db; }
-        
-        /* Your original CSS from all three files can be pasted here directly */
-        /* I recommend wrapping them in a container ID if they conflict */
+        nav { background: var(--primary); color: white; display: flex; padding: 0 20px; gap: 10px; align-items: center; height: 60px; flex-shrink: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .nav-btn { background: #34495e; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; transition: 0.3s; border-radius: 4px; }
+        .nav-btn:hover { background: #4e6a85; }
+        .nav-btn.active { background: var(--accent); }
+
+        .module-tab { display: none; flex: 1; overflow-y: auto; height: calc(100vh - 60px); }
+        .module-tab.active { display: flex; flex-direction: column; }
+
+        /* --- MODULE 1 (QUANTIFIER) STYLES --- */
+        #mod-quant { background: #222; color: #eee; flex-direction: row; }
+        #q-sidebar { width: 320px; background: #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #444; }
+        #q-main-view { flex: 1; position: relative; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #q-main-view canvas { position: absolute; image-rendering: pixelated; }
+
+        /* --- MODULE 2 (ANALYST) STYLES --- */
+        #mod-analyst { padding: 30px; }
+        .stats-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+        .group-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 10px; }
+        #plot-area { background: #fff; min-height: 500px; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; }
+
+        /* --- MODULE 3 (ILLUSTRATOR) STYLES --- */
+        #mod-illus { padding: 30px; }
+        .config-row { display: flex; gap: 15px; flex-wrap: wrap; background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
+        #dynamic-grid { display: grid; gap: 10px; margin-top: 20px; padding: 20px; background: white; border-radius: 8px; }
+        .file-drop { border: 2px dashed #cbd5e1; padding: 10px; text-align: center; border-radius: 4px; font-size: 11px; cursor: pointer; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .file-drop.has-file { background: #dcfce7; border-color: #22c55e; }
     </style>
 </head>
 <body>
 
 <nav>
-    <button class="nav-btn active" onclick="openModule(event, 'quantifier')">1. Quantifier</button>
-    <button class="nav-btn" onclick="openModule(event, 'analyst')">2. Analyst</button>
-    <button class="nav-btn" onclick="openModule(event, 'illustrator')">3. Illustrator</button>
+    <h2 style="margin-right: 20px; font-size: 1.2rem;">Innervation Analysis Suite</h2>
+    <button class="nav-btn active" onclick="showTab(event, 'mod-quant')">1. Quantify</button>
+    <button class="nav-btn" onclick="showTab(event, 'mod-analyst')">2. Analyze</button>
+    <button class="nav-btn" onclick="showTab(event, 'mod-illus')">3. Illustrate</button>
 </nav>
 
-<div id="quantifier" class="module-container active">
-    </div>
+<div id="mod-quant" class="module-tab active">
+    <div id="q-sidebar">
+        <h3>Quantification</h3>
+        <button onclick="document.getElementById('fileInput').click()">📂 Load Folder</button>
+        <input type="file" id="fileInput" webkitdirectory multiple style="display:none" onchange="handleFiles(this.files)">
+        
+        <label>Contrast: <span id="val-contrast">1.0</span></label>
+        <input type="range" id="sl-contrast" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateFilters('contrast', this.value)">
+        
+        <label>Brightness: <span id="val-brightness">1.0</span></label>
+        <input type="range" id="sl-brightness" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateFilters('brightness', this.value)">
 
-<div id="analyst" class="module-container">
-    </div>
+        <select id="algo-select" onchange="toggleAlgo()" style="padding:5px; margin-top:10px;">
+            <option value="otsu">Otsu (Auto)</option>
+            <option value="cutoff">Manual Cutoff</option>
+        </select>
+        <input type="number" id="manual-cutoff" value="128" style="display:none;">
 
-<div id="illustrator" class="module-container">
+        <button onclick="setMode('DRAW')" style="margin-top:10px; background:#006b8f; color:white;">✏️ Draw ROI</button>
+        <button id="btn-calc" onclick="calculateIndex()" disabled>Calculate</button>
+        <div id="result-display" style="font-size:1.5rem; color:#00d2ff; text-align:center;">--</div>
+        <button onclick="downloadLog()" style="font-size: 0.8rem;">⬇️ Download Results .txt</button>
     </div>
+    <div id="q-main-view" onmousedown="onMouseDown(event)" onmousemove="onMouseMove(event)" onmouseup="onMouseUp(event)">
+        <canvas id="imgCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+    </div>
+</div>
+
+<div id="mod-analyst" class="module-tab">
+    <div class="stats-grid">
+        <div class="sidebar-stats">
+            <div class="group-card">
+                <h4>CFA Mice</h4>
+                <input type="file" id="in_CFA_L" multiple>
+                <button onclick="triggerPyAdd('CFA_L')" style="font-size:0.7rem;">+ Left</button>
+                <input type="file" id="in_CFA_R" multiple>
+                <button onclick="triggerPyAdd('CFA_R')" style="font-size:0.7rem;">+ Right</button>
+            </div>
+            <div class="group-card">
+                <h4>Carrageenan Mice</h4>
+                <input type="file" id="in_Carr_L" multiple>
+                <button onclick="triggerPyAdd('Carr_L')" style="font-size:0.7rem;">+ Left</button>
+                <input type="file" id="in_Carr_R" multiple>
+                <button onclick="triggerPyAdd('Carr_R')" style="font-size:0.7rem;">+ Right</button>
+            </div>
+            <button id="btn-run-stats" style="width:100%; padding:15px; background:#2c3e50; color:white;">GENERATE GRAPH</button>
+        </div>
+        <div class="display-stats">
+            <div id="plot-area">Upload data...</div>
+            <div id="stats-area" style="background:#333; color:#2ecc71; padding:15px; font-family:monospace; margin-top:10px; border-radius:5px; display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="mod-illus" class="module-tab">
+    <div class="config-row">
+        <div>Cols: <input type="number" id="num-cols" value="4" style="width:50px"></div>
+        <div>Rows: <input type="number" id="num-rows" value="2" style="width:50px"></div>
+        <button onclick="buildGridUI()" style="background:#2563eb; color:white;">Reset Grid</button>
+        <button onclick="generateFigure()" style="background:#16a34a; color:white;">Generate Figure</button>
+    </div>
+    <div id="dynamic-grid" style="display:none;"></div>
+    <div id="canvas-wrapper" style="text-align:center; background:#ddd; padding:20px;">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+</div>
 
 <script>
-    function openModule(evt, moduleName) {
-        // Hide all modules
-        var i, content, navlinks;
-        content = document.getElementsByClassName("module-container");
-        for (i = 0; i < content.length; i++) {
-            content[i].style.display = "none";
+    // Tab Switching
+    function showTab(evt, tabId) {
+        document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        evt.currentTarget.classList.add('active');
+    }
+
+    // Module 1 (Quantifier) Logic - V6.3
+    let files = [], currentIndex = 0, originalImageData = null, processedCanvas = document.createElement('canvas');
+    let scale = 1.0, panX = 0, panY = 0, mode = 'VIEW', polyPoints = [], params = { contrast: 1.0, brightness: 1.0, blur: 0.0 };
+    let resultsLog = "Filename\tIndex\n", lastCalcValue = null;
+
+    const imgCanvas = document.getElementById('imgCanvas'), overCanvas = document.getElementById('overlayCanvas');
+    const ctxImg = imgCanvas.getContext('2d'), ctxOver = overCanvas.getContext('2d');
+
+    async function handleFiles(fList) {
+        files = Array.from(fList).filter(f => f.name.match(/\.(tif|tiff|jpg|png|jpeg)$/i));
+        if (files.length > 0) loadImage(0);
+    }
+
+    async function loadImage(index) {
+        const file = files[index];
+        const buffer = await file.arrayBuffer();
+        if (file.name.match(/\.(tif|tiff)$/i)) {
+            const ifds = UTIF.decode(buffer); UTIF.decodeImage(buffer, ifds[0]);
+            const rgba = UTIF.toRGBA8(ifds[0]);
+            originalImageData = new ImageData(new Uint8ClampedArray(rgba), ifds[0].width, ifds[0].height);
         }
-        // Deactivate all buttons
-        navlinks = document.getElementsByClassName("nav-btn");
-        for (i = 0; i < navlinks.length; i++) {
-            navlinks[i].className = navlinks[i].className.replace(" active", "");
+        processedCanvas.width = originalImageData.width; processedCanvas.height = originalImageData.height;
+        render();
+    }
+
+    function render() {
+        if (!originalImageData) return;
+        const container = document.getElementById('q-main-view');
+        imgCanvas.width = container.clientWidth; imgCanvas.height = container.clientHeight;
+        overCanvas.width = container.clientWidth; overCanvas.height = container.clientHeight;
+        ctxImg.clearRect(0,0,imgCanvas.width, imgCanvas.height);
+        ctxImg.save();
+        ctxImg.translate(imgCanvas.width/2 + panX, imgCanvas.height/2 + panY);
+        ctxImg.scale(scale, scale);
+        ctxImg.drawImage(processedCanvas, -processedCanvas.width/2, -processedCanvas.height/2);
+        ctxImg.restore();
+    }
+
+    // Module 3 Helper (Illustrator)
+    function buildGridUI() {
+        const c = document.getElementById('num-cols').value, r = document.getElementById('num-rows').value;
+        const grid = document.getElementById('dynamic-grid');
+        grid.innerHTML = ''; grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = `repeat(${parseInt(c)+1}, 1fr)`;
+        for(let i=0; i<(parseInt(r)+1)*(parseInt(c)+1); i++){
+            const d = document.createElement('div'); d.className='file-drop'; d.innerHTML='Drag File';
+            grid.appendChild(d);
         }
-        // Show current module and set button to active
-        document.getElementById(moduleName).style.display = "block";
-        evt.currentTarget.className += " active";
     }
 </script>
+
+<py-script>
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+from js import document, alert
+from pyodide.ffi import create_proxy
+
+# --- MODULE 2 ANALYST LOGIC ---
+STORE = { "CFA_L": [], "CFA_R": [], "Carr_L": [], "Carr_R": [] }
+
+async def add_files_py(key, input_id):
+    inp = document.getElementById(input_id)
+    # Logic to process text files into STORE
+    pass
+
+# Simplified trigger for the Analyst Generate button
+def run_analysis(event):
+    # Perform t-tests and build matplotlib figure
+    # Display in "plot-area"
+    pass
+
+document.getElementById("btn-run-stats").addEventListener("click", create_proxy(run_analysis))
+</py-script>
 
 </body>
 </html>
