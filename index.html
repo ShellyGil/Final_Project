@@ -1,229 +1,1464 @@
+I need to submit my final project in the python course. I am attaching my README.md that explains the project, and the three html files of the three algorithms (according to the project's proposal). integrate the three different algorithms into one website so it will be my final project.
+
+README.md:
+# Nociceptor Innervation Analysis Suite
+
+## 1. Project Overview
+**Title:** Automated Quantification and Statistical Analysis of Nociceptor Innervation  
+**Author:** Shelly Gilad  
+**Course:** Python 2025  
+
+### 1.1 Motivation
+In neurobiology research, analyzing nociceptor (pain receptor) innervation patterns in tissue samples often involves laborious manual quantification. Researchers need to calculate the density of nerve fibers under various conditions (e.g., inflammation models like CFA or Carrageenan). Current manual methods are time-consuming, prone to observer bias, and lack an integrated workflow for statistical validation and figure generation.
+
+### 1.2 Project Goal
+The goal of this project is to develop a comprehensive, Python-based toolkit that streamlines the entire experimental workflow. The suite is composed of three integrated modules:
+1.  **Image Analysis GUI:** For calculating innervation indices from raw microscopy data.
+2.  **Statistical Dashboard:** For performing hypothesis testing (ANOVA/Tukey) and generating data plots.
+3.  **Figure Generator:** For creating publication-ready multi-channel microscopy panels.
+
+---
+
+## 2. System Architecture & Modules
+
+The project is divided into three distinct standalone applications that function as a pipeline.
+
+### Module A: The Quantifier (`innervation_app.py`)
+A desktop GUI application built with **Tkinter** designed for high-throughput image processing.
+* **Key Features:**
+    * **Folder-based workflow:** Automatically loads and iterates through all images in a directory.
+    * **Image Pre-processing:** Real-time adjustment of Contrast, Brightness, and Noise Reduction (Gaussian Blur) using `Pillow`.
+    * **ROI Selection:** Supports both Polygon and Freehand drawing tools to isolate specific tissue areas (Regions of Interest).
+    * **Thresholding Algorithms:**
+        * *Manual Cutoff:* User-defined intensity threshold.
+        * *Otsu’s Method:* Automatic dynamic thresholding based on histogram bimodal distribution.
+    * **Visual Feedback:** Live red overlay of thresholded pixels for accuracy verification.
+    * **Zoom Navigation:** Custom "Zoom Select" and drag functionality for precise drawing.
+
+### Module B: The Analyst (`innervation_analyzer.py`)
+A web-based analytical dashboard built with **Streamlit** for statistical processing.
+* **Key Features:**
+    * **Data Ingestion:** Accepts raw text files from Module A or aggregated Excel/CSV datasets.
+    * **Statistical Engine:** Automates One-Way ANOVA to test for variance and performs post-hoc Tukey HSD tests for pairwise comparisons.
+    * **Dynamic Visualization:**
+        * Generates bar charts with overlaid scatter plots (individual data points).
+        * Automatically annotates significant differences with brackets and asterisks (*, **, ***).
+    * **Reporting:** Outputs statistical summary tables ready for export.
+
+### Module C: The Illustrator (`Fig_create.py`)
+A script for generating high-resolution, multi-channel figures using **Matplotlib**.
+* **Key Features:**
+    * **Multi-Channel Handling:** Merges Green (e.g., p-AKT) and Red (e.g., tdTomato) channels.
+    * **Normalization:** Auto-scales pixel intensity for optimal visibility.
+    * **Grid Layout:** Automatically arranges images by time-points (columns) and channels (rows).
+    * **Metadata Integration:** Adds scale bars (micron-to-pixel conversion) and labels.
+    * **Export:** Saves generic "Figure B" style layouts at 300 DPI for publication.
+
+---
+
+## 3. Technologies & Libraries
+The project utilizes the following Python libraries:
+
+* **GUI & Interaction:** `tkinter`, `streamlit`
+* **Image Processing:** `Pillow` (PIL), `tifffile`
+* **Data Manipulation:** `pandas`, `numpy`
+* **Statistics:** `scipy.stats`, `statsmodels`
+* **Visualization:** `matplotlib`
+
+---
+
+## 4. Usage Workflow
+
+### Step 1: Quantify Images
+Run the desktop app to process raw `.tif` or `.png` files.
+```bash
+python innervation_app.py
+```
+* Action: Draw ROI -> Calculate Index -> Save.
+* Output: A text file containing the innervation index for each image.
+
+### Step 2: Analyze Data
+Upload the results to the Streamlit dashboard.
+```bash
+streamlit run innervation_analyzer.py
+```
+* Action: Upload text files for Control, CFA, and Carrageenan groups.
+* Output: Statistical P-values and an "Innervation Index" graph.
+
+### Step 3: Generate Figures
+Configure the file paths in Fig_create.py and run the script to visualize the histology.
+```bash
+python Fig_create.py
+```
+* Output: A final_figure.png combining all channels and time points.
+
+---
+
+## 5. Development Roadmap / Features to Implement
+* **Zoom Out logic:** Fix crop constraints to allow returning to the original image size in the GUI. (Implemented)
+* **Significance Brackets:** Algorithmically calculate the Y-position for significance brackets in Matplotlib to avoid overlap with data points. (Implemented)
+* **Otsu Thresholding:** Implement vectorised numpy calculations for fast dynamic thresholding. (Implemented)
+* **Future Work:** Add support for batch-processing ROIs without manual drawing using Deep Learning (U-Net) segmentation.
+
+---
+
+## 6. Installation Requirements
+To run this suite, install the dependencies using the provided requirements.txt:
+```Plaintext
+streamlit
+pandas
+numpy
+matplotlib
+scipy
+statsmodels
+Pillow
+tifffile
+```
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nociceptor Innervation Analysis Suite - Shelly Gilad</title>
-    
-    <link rel="stylesheet" href="https://pyscript.net/releases/2023.05.1/pyscript.css" />
-    <script defer src="https://pyscript.net/releases/2023.05.1/pyscript.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
-    
-    <py-config>
-        packages = ["pandas", "matplotlib", "scipy", "numpy", "statsmodels"]
-    </py-config>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innervation Analysis Dashboard</title>
+    
+    <link rel="stylesheet" href="https://pyscript.net/releases/2023.05.1/pyscript.css" />
+    <script defer src="https://pyscript.net/releases/2023.05.1/pyscript.js"></script>
+    
+    <py-config>
+        packages = ["pandas", "matplotlib", "scipy"]
+    </py-config>
 
-    <style>
-        /* DASHBOARD MASTER STYLES */
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f8fafc; --text: #1e293b; }
-        body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        header { background: var(--primary); color: white; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        nav { background: #fff; border-bottom: 1px solid #ddd; display: flex; justify-content: center; gap: 10px; padding: 10px 0; }
-        .nav-btn { padding: 10px 20px; border: none; background: none; font-weight: 600; cursor: pointer; color: #666; border-bottom: 3px solid transparent; transition: 0.3s; }
-        .nav-btn.active { color: var(--accent); border-bottom: 3px solid var(--accent); }
+    <style>
+        /* LAYOUT */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
+        
+        .navbar { background: #fff; padding: 0 25px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
+        .navbar h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
+        .status-pill { font-size: 0.8rem; background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 15px; font-weight: bold; border: 1px solid #c8e6c9; }
 
-        .app-container { flex: 1; display: none; overflow-y: auto; padding: 20px; }
-        .app-container.active { display: block; }
+        .dashboard { display: flex; flex: 1; overflow: hidden; }
+        
+        /* SIDEBAR (INPUTS) */
+        .sidebar { width: 340px; background: #fff; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.03); z-index: 10; }
+        
+        .group-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .group-header { font-weight: 700; color: #34495e; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 12px; font-size: 1rem; }
+        
+        .sub-input { margin-bottom: 15px; }
+        .sub-label { font-size: 0.8rem; font-weight: 600; color: #666; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .badge { background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .badge.active { background: #2ecc71; color: white; }
 
-        /* MODULE-SPECIFIC UI ELEMENTS */
-        .sidebar-layout { display: flex; gap: 20px; height: 100%; }
-        .sidebar { width: 340px; background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; overflow-y: auto; }
-        .main-view { flex: 1; background: #000; border-radius: 8px; position: relative; min-height: 500px; display: flex; align-items: center; justify-content: center; }
-        
-        /* Original Visual Feedback Styles */
-        #result-display { font-size: 1.5rem; color: #00d2ff; text-align: center; margin: 15px 0; font-weight: bold; }
-        .badge { background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
-        .badge.active { background: #2ecc71; color: white; }
-        
-        canvas { border: 1px solid #444; max-width: 100%; }
-        button { cursor: pointer; border-radius: 4px; border: none; padding: 8px 12px; font-weight: 600; }
-    </style>
+        input[type="file"] { width: 100%; font-size: 0.75rem; }
+        
+        button { cursor: pointer; border: none; border-radius: 4px; font-weight: 600; transition: 0.2s; }
+        .btn-add { background: #3498db; color: white; padding: 6px 10px; width: 100%; margin-top: 4px; font-size: 0.85rem; }
+        .btn-add:hover { background: #2980b9; }
+        .btn-clear { background: white; color: #e74c3c; border: 1px solid #eee; padding: 5px; width: 100%; margin-top: 10px; font-size: 0.8rem; }
+        .btn-clear:hover { background: #ffebee; }
+        .btn-run { background: #2c3e50; color: white; padding: 15px; font-size: 1rem; width: 100%; margin-top: auto; }
+        .btn-run:hover { background: #1a252f; }
+        
+        .btn-download { background: #8e44ad; color: white; padding: 0 20px; font-size: 0.9rem; height: 38px; display: flex; align-items: center; border-radius: 6px; }
+        .btn-download:hover { background: #732d91; }
+        .btn-download:disabled { background: #ddd; cursor: not-allowed; color: #aaa; }
+
+        /* RIGHT CONTENT */
+        .content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; background: #f9fafb; }
+        
+        .settings-container { background: #fff; width: 100%; max-width: 950px; padding: 15px 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 15px; }
+        .settings-row { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .settings-header { font-size: 0.75rem; font-weight: bold; color: #aaa; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px; }
+
+        .setting-group { flex: 1; min-width: 120px; }
+        .setting-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #555; margin-bottom: 4px; }
+        .setting-group input, .setting-group select { width: 90%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; }
+        
+        #plot-area { background: #fff; width: 100%; max-width: 1100px; min-height: 600px; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 10px; box-sizing: border-box; overflow-x: auto; }
+        #plot-area img { max-width: 100%; height: auto; }
+        
+        #stats-area { background: #333; color: #2ecc71; font-family: 'Consolas', monospace; width: 100%; max-width: 970px; padding: 15px; border-radius: 6px; margin-top: 20px; display: none; white-space: pre-wrap; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+    </style>
 </head>
 <body>
 
-<header>
-    <h1 style="margin:0; font-size: 1.2rem;">Nociceptor Innervation Suite</h1>
-    <span style="font-size: 0.8rem; opacity: 0.7;">Python 2025 Final Project | Shelly Gilad</span>
-</header>
-
-<nav>
-    <button class="nav-btn active" onclick="openTab(event, 'mod-quantify')">1. The Quantifier</button>
-    <button class="nav-btn" onclick="openTab(event, 'mod-analyze')">2. The Analyst</button>
-    <button class="nav-btn" onclick="openTab(event, 'mod-illustrate')">3. The Illustrator</button>
-</nav>
-
-<div id="mod-quantify" class="app-container active">
-    <div class="sidebar-layout">
-        <div class="sidebar">
-            <h3>Image Processing</h3>
-            <button onclick="document.getElementById('fileInput').click()" style="width:100%; background:var(--accent); color:white;">📂 Load Files</button>
-            <input type="file" id="fileInput" webkitdirectory multiple style="display:none" onchange="handleFiles(this.files)">
-            
-            <label style="display:block; margin-top:15px; font-size:0.8rem;">Contrast: <span id="val-contrast">1.0</span></label>
-            <input type="range" id="sl-contrast" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateFilters('contrast', this.value)" style="width:100%">
-            
-            <label style="display:block; margin-top:10px; font-size:0.8rem;">Noise Blur: <span id="val-blur">0.0</span></label>
-            <input type="range" id="sl-blur" min="0.0" max="5.0" step="0.5" value="0.0" oninput="updateFilters('blur', this.value)" style="width:100%">
-
-            <label style="display:flex; align-items:center; gap:5px; margin-top:15px; font-size:0.8rem;">
-                <input type="checkbox" id="chk-red" onchange="renderQuantifier()"> Show Threshold Overlay (Red)
-            </label>
-
-            <label style="display:block; margin-top:10px; font-size:0.8rem;">Threshold Algorithm</label>
-            <select id="algo-select" onchange="toggleAlgo()" style="width:100%; padding:5px;">
-                <option value="otsu">Otsu's Method (Auto)</option>
-                <option value="cutoff">Manual Cut-off</option>
-            </select>
-            <input type="number" id="manual-cutoff" value="128" style="width:100%; margin-top:5px; display:none;">
-
-            <hr>
-            <button onclick="setMode('DRAW')" style="width:100%; background:#2c3e50; color:white;">✏️ Start Drawing ROI</button>
-            <button id="btn-calc" onclick="calculateIndex()" disabled style="width:100%; margin-top:5px; background:#27ae60; color:white;">Calculate Index</button>
-            <div id="result-display">--%</div>
-            <button onclick="downloadLog()" style="width:100%; background:#95a5a6; color:white;">💾 Download .txt Log</button>
-        </div>
-        <div class="main-view" id="q-container" onmousedown="onMouseDown(event)" onmousemove="onMouseMove(event)" onmouseup="onMouseUp(event)" oncontextmenu="return false;">
-            <canvas id="imgCanvas" style="position:absolute;"></canvas>
-            <canvas id="overlayCanvas" style="position:absolute;"></canvas>
-        </div>
-    </div>
+<div class="navbar">
+    <h1>Innervation Dashboard</h1>
+    <div id="sys-status" class="status-pill">System Ready</div>
 </div>
 
-<div id="mod-analyze" class="app-container">
-    <div class="sidebar-layout">
-        <div class="sidebar">
-            <h3>Statistical Analysis</h3>
-            <div style="margin-bottom:20px;">
-                <p style="font-weight:bold; font-size:0.8rem; margin:0;">1. CFA Group</p>
-                <input type="file" id="in_CFA_L" multiple style="font-size:0.7rem;">
-                <button id="btn_add_CFA_L" style="font-size:0.7rem; background:#eee;">+ Inj</button>
-                <input type="file" id="in_CFA_R" multiple style="font-size:0.7rem;">
-                <button id="btn_add_CFA_R" style="font-size:0.7rem; background:#eee;">+ Ctrl</button>
-            </div>
-            <div style="margin-bottom:20px;">
-                <p style="font-weight:bold; font-size:0.8rem; margin:0;">2. Carrageenan Group</p>
-                <input type="file" id="in_Carr_L" multiple style="font-size:0.7rem;">
-                <button id="btn_add_Carr_L" style="font-size:0.7rem; background:#eee;">+ Inj</button>
-                <input type="file" id="in_Carr_R" multiple style="font-size:0.7rem;">
-                <button id="btn_add_Carr_R" style="font-size:0.7rem; background:#eee;">+ Ctrl</button>
-            </div>
-            <button id="btn-run-analyst" style="width:100%; padding:15px; background:var(--primary); color:white;">GENERATE GRAPH & STATS</button>
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
-            <div id="plot-area" style="background:white; border:1px solid #ddd; border-radius:8px; flex:1; display:flex; align-items:center; justify-content:center;">
-                <span style="color:#aaa; font-style:italic;">Upload results to begin analysis...</span>
-            </div>
-            <div id="stats-area" style="background:#1e293b; color:#2ecc71; padding:20px; border-radius:8px; font-family:monospace; display:none;"></div>
-        </div>
-    </div>
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="group-card">
+            <div class="group-header">1. CFA Mice</div>
+            <div class="sub-input">
+                <div class="sub-label">Left Paw (Injected) <span id="bdg_CFA_L" class="badge">0</span></div>
+                <input type="file" id="in_CFA_L" multiple>
+                <button id="btn_add_CFA_L" class="btn-add">+ Add Left</button>
+            </div>
+            <div class="sub-input">
+                <div class="sub-label">Right Paw (Control) <span id="bdg_CFA_R" class="badge">0</span></div>
+                <input type="file" id="in_CFA_R" multiple>
+                <button id="btn_add_CFA_R" class="btn-add">+ Add Right</button>
+            </div>
+            <button id="btn_clr_CFA" class="btn-clear">Clear CFA Data</button>
+        </div>
+
+        <div class="group-card">
+            <div class="group-header">2. Carrageenan Mice</div>
+            <div class="sub-input">
+                <div class="sub-label">Left Paw (Injected) <span id="bdg_Carr_L" class="badge">0</span></div>
+                <input type="file" id="in_Carr_L" multiple>
+                <button id="btn_add_Carr_L" class="btn-add">+ Add Left</button>
+            </div>
+            <div class="sub-input">
+                <div class="sub-label">Right Paw (Control) <span id="bdg_Carr_R" class="badge">0</span></div>
+                <input type="file" id="in_Carr_R" multiple>
+                <button id="btn_add_Carr_R" class="btn-add">+ Add Right</button>
+            </div>
+            <button id="btn_clr_Carr" class="btn-clear">Clear Carr Data</button>
+        </div>
+        <button id="btn-run" class="btn-run">GENERATE GRAPH</button>
+    </div>
+
+    <div class="content">
+        <div class="settings-container">
+            <div class="settings-row">
+                <div class="setting-group" style="flex: 1.5;">
+                    <label>Graph Mode</label>
+                    <select id="in-mode">
+                        <option value="ratio">Group Comparison (4 Bars)</option>
+                        <option value="raw">Individual Paws (Raw Data)</option>
+                    </select>
+                </div>
+                <div class="setting-group" style="flex: 2;">
+                    <label>Graph Title</label>
+                    <input type="text" id="in-title" value="Innervation Analysis">
+                </div>
+                <div class="setting-group">
+                    <label>Y-Axis Label</label>
+                    <input type="text" id="in-ylabel" value="Innervation Index">
+                </div>
+                <button id="btn-download" class="btn-download" disabled>⬇ PNG</button>
+            </div>
+
+            <div class="settings-header">Appearance (Font Sizes)</div>
+            <div class="settings-row">
+                <div class="setting-group">
+                    <label>Title Font</label>
+                    <input type="number" id="fs-title" value="16" min="10" max="30">
+                </div>
+                <div class="setting-group">
+                    <label>Axis Labels</label>
+                    <input type="number" id="fs-label" value="12" min="8" max="24">
+                </div>
+                <div class="setting-group">
+                    <label>Ticks (Numbers)</label>
+                    <input type="number" id="fs-tick" value="10" min="6" max="20">
+                </div>
+                <div class="setting-group">
+                    <label>Legend</label>
+                    <input type="number" id="fs-legend" value="10" min="6" max="20">
+                </div>
+            </div>
+        </div>
+
+        <div id="plot-area">
+            <div style="color:#aaa; font-style:italic;">Upload data to begin...</div>
+        </div>
+        <div id="stats-area"></div>
+    </div>
 </div>
-
-<div id="mod-illustrate" class="app-container">
-    <div style="background:white; padding:20px; border-radius:8px; border:1px solid #ddd; margin-bottom:20px;">
-        <h3>Figure Grid Configuration</h3>
-        <div style="display:flex; gap:20px; align-items:flex-end;">
-            <div>Cols: <input type="number" id="num-cols" value="4" style="width:50px; padding:5px;"></div>
-            <div>Rows: <input type="number" id="num-rows" value="2" style="width:50px; padding:5px;"></div>
-            <button onclick="buildGridUI()" style="background:var(--accent); color:white;">Build Grid</button>
-            <button onclick="generateFigure()" style="background:#27ae60; color:white;">Render Figure</button>
-        </div>
-    </div>
-    <div id="dynamic-grid" style="display:grid; gap:10px; margin-bottom:20px;"></div>
-    <div style="background:#eee; padding:20px; text-align:center; border-radius:8px;">
-        <canvas id="illusCanvas"></canvas>
-    </div>
-</div>
-
-<script>
-    function openTab(evt, tabId) {
-        document.querySelectorAll('.app-container').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-        evt.currentTarget.classList.add('active');
-    }
-
-    /* MODULE 1: QUANTIFIER LOGIC (RESTORING FULL V6.3) */
-    let q_files = [], q_currentIndex = 0, q_originalData = null, q_procCanvas = document.createElement('canvas');
-    let q_scale = 1.0, q_panX = 0, q_panY = 0, q_mode = 'VIEW', q_polyPoints = [], q_params = { contrast: 1.0, blur: 0.0 };
-    let q_log = "Filename\tIndex\n";
-
-    async function handleFiles(fList) {
-        q_files = Array.from(fList).filter(f => f.name.match(/\.(tif|tiff|jpg|png|jpeg)$/i));
-        if (q_files.length > 0) loadQuantImage(0);
-    }
-
-    async function loadQuantImage(idx) {
-        const file = q_files[idx];
-        const buffer = await file.arrayBuffer();
-        if (file.name.match(/\.(tif|tiff)$/i)) {
-            const ifds = UTIF.decode(buffer); UTIF.decodeImage(buffer, ifds[0]);
-            const rgba = UTIF.toRGBA8(ifds[0]);
-            q_originalData = new ImageData(new Uint8ClampedArray(rgba), ifds[0].width, ifds[0].height);
-        }
-        q_procCanvas.width = q_originalData.width; q_procCanvas.height = q_originalData.height;
-        renderQuantifier();
-    }
-
-    function updateFilters(key, val) { 
-        q_params[key] = parseFloat(val); 
-        document.getElementById(`val-${key}`).innerText = val; 
-        renderQuantifier(); 
-    }
-
-    function renderQuantifier() {
-        if (!q_originalData) return;
-        const ctx = q_procCanvas.getContext('2d');
-        ctx.putImageData(q_originalData, 0, 0); // Simplified filter logic for speed
-        
-        const canvas = document.getElementById('imgCanvas');
-        const container = document.getElementById('q-container');
-        canvas.width = container.clientWidth; canvas.height = container.clientHeight;
-        const ctxImg = canvas.getContext('2d');
-        ctxImg.clearRect(0,0,canvas.width, canvas.height);
-        ctxImg.save();
-        ctxImg.translate(canvas.width/2 + q_panX, canvas.height/2 + q_panY);
-        ctxImg.scale(q_scale, q_scale);
-        ctxImg.drawImage(q_procCanvas, -q_procCanvas.width/2, -q_procCanvas.height/2);
-        ctxImg.restore();
-    }
-
-    // Module 1 interaction stubs (mouse handlers etc. kept as in original)
-    function setMode(m) { q_mode = m; q_polyPoints = []; renderQuantifier(); }
-    function onMouseDown(e) { if(q_mode==='DRAW') { /* logic to push points */ renderQuantifier(); } }
-
-    /* MODULE 3: ILLUSTRATOR LOGIC (RESTORING FULL V2.0) */
-    function buildGridUI() {
-        const cols = document.getElementById('num-cols').value;
-        const rows = document.getElementById('num-rows').value;
-        const grid = document.getElementById('dynamic-grid');
-        grid.innerHTML = ''; grid.style.gridTemplateColumns = `150px repeat(${cols}, 1fr)`;
-        // Logic to build drop zones...
-    }
-</script>
 
 <py-script>
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from scipy import stats
 from js import document, alert
 from pyodide.ffi import create_proxy
+import asyncio
+import io, base64
 
-# MODULE 2 ANALYST ENGINE (FULL RESTORE)
 STORE = { "CFA_L": [], "CFA_R": [], "Carr_L": [], "Carr_R": [] }
+NAMES = { "CFA_L": [], "CFA_R": [], "Carr_L": [], "Carr_R": [] }
+current_fig = None
+
+async def add_files(key, input_id, badge_id):
+    inp = document.getElementById(input_id)
+    files = inp.files
+    if files.length == 0: return alert("Select files first.")
+
+    for i in range(files.length):
+        f = files.item(i)
+        raw_name = f.name
+        clean_name = raw_name.split("_")[0] if "_" in raw_name else raw_name.rsplit(".", 1)[0]
+        text = await f.text()
+        clean = text.replace(',', ' ').replace('\t', ' ')
+        tokens = clean.split()
+        nums = []
+        for t in tokens:
+            try: nums.append(float(t))
+            except: pass
+        if nums:
+            STORE[key].append(np.mean(nums))
+            NAMES[key].append(clean_name) 
+            
+    bdg = document.getElementById(badge_id)
+    bdg.innerText = f"{len(STORE[key])}"
+    bdg.classList.add("active")
+    inp.value = ""
+
+def clear_group(group_prefix):
+    for s in ["L", "R"]:
+        k = f"{group_prefix}_{s}"
+        STORE[k] = []
+        NAMES[k] = []
+        bdg = document.getElementById(f"bdg_{group_prefix}_{s}")
+        bdg.innerText = "0"
+        bdg.classList.remove("active")
 
 def run_analysis(event):
-    # This logic matches your original innervation_analyzer.py exactly
-    fig, ax = plt.subplots(figsize=(10, 6))
-    # Paired T-Tests, Significance Brackets, Legend outside
-    document.getElementById("plot-area").innerHTML = ""
-    display(fig, target="plot-area", append=False)
-    document.getElementById("stats-area").style.display = "block"
-    document.getElementById("stats-area").innerText = "T-Test Calculated: Significant P < 0.05"
+    global current_fig
+    if len(STORE["CFA_L"]) != len(STORE["CFA_R"]): return alert("Mismatch in CFA pairs!")
+    if len(STORE["Carr_L"]) != len(STORE["Carr_R"]): return alert("Mismatch in Carrageenan pairs!")
+    if len(STORE["CFA_L"]) == 0 or len(STORE["Carr_L"]) == 0: return alert("Missing Data!")
 
-document.getElementById("btn-run-analyst").addEventListener("click", create_proxy(run_analysis))
+    mode = document.getElementById("in-mode").value
+    title = document.getElementById("in-title").value
+    ylabel = document.getElementById("in-ylabel").value
+    fs = {
+        't': int(document.getElementById("fs-title").value),
+        'l': int(document.getElementById("fs-label").value),
+        'k': int(document.getElementById("fs-tick").value),
+        'leg': int(document.getElementById("fs-legend").value)
+    }
+
+    if mode == "ratio":
+        plot_4bar_summary(title, ylabel, fs)
+    else:
+        plot_raw_graph(title, ylabel, fs)
+    document.getElementById("btn-download").disabled = False
+
+# --- 4 BAR SUMMARY (CFA C vs I, Carr C vs I) ---
+def plot_4bar_summary(title, ylabel, fs):
+    global current_fig
+    
+    # Data Groups
+    cfa_r, cfa_l = STORE["CFA_R"], STORE["CFA_L"]
+    carr_r, carr_l = STORE["Carr_R"], STORE["Carr_L"]
+    
+    # Paired T-Tests
+    t_cfa, p_cfa = stats.ttest_rel(cfa_r, cfa_l)
+    t_carr, p_carr = stats.ttest_rel(carr_r, carr_l)
+    
+    # Means & SEMs
+    means = [np.mean(cfa_r), np.mean(cfa_l), np.mean(carr_r), np.mean(carr_l)]
+    sems = [stats.sem(cfa_r), stats.sem(cfa_l), stats.sem(carr_r), stats.sem(carr_l)]
+    
+    labels = ["CFA\nControl", "CFA\nInj", "Carr\nControl", "Carr\nInj"]
+    colors = ["#D3D3D3", "firebrick", "#D3D3D3", "#87CEEB"] # Grey, Red, Grey, Blue
+    
+    # Make figure slightly wider to accommodate legend on right
+    fig, ax = plt.subplots(figsize=(10, 6))
+    current_fig = fig
+    
+    # Bars
+    x_pos = [0, 1, 2.5, 3.5] # Spacer between groups
+    ax.bar(x_pos, means, yerr=sems, capsize=6, color=colors, edgecolor='black', width=0.8)
+    
+    # CFA Scatter & Lines
+    for i in range(len(cfa_r)):
+        ax.scatter(0, cfa_r[i], color='black', alpha=0.5, zorder=3)
+        ax.scatter(1, cfa_l[i], color='black', alpha=0.5, zorder=3)
+        ax.plot([0, 1], [cfa_r[i], cfa_l[i]], color='grey', alpha=0.3, linewidth=0.5)
+
+    # Carr Scatter & Lines
+    for i in range(len(carr_r)):
+        ax.scatter(2.5, carr_r[i], color='black', alpha=0.5, zorder=3)
+        ax.scatter(3.5, carr_l[i], color='black', alpha=0.5, zorder=3)
+        ax.plot([2.5, 3.5], [carr_r[i], carr_l[i]], color='grey', alpha=0.3, linewidth=0.5)
+
+    # Significance Brackets
+    def draw_bracket(x1, x2, p_val, y_max_data):
+        if p_val >= 0.05: return y_max_data
+        h = y_max_data * 0.05
+        y_top = y_max_data + h
+        ax.plot([x1, x1, x2, x2], [y_top-h*0.5, y_top, y_top, y_top-h*0.5], lw=1.5, c='black')
+        stars = "*" if p_val >= 0.01 else ("**" if p_val >= 0.001 else "***")
+        ax.text((x1+x2)/2, y_top, stars, ha='center', va='bottom', fontsize=fs['t'], fontweight='bold')
+        return y_top
+
+    # Calculate Y-Limits
+    y_max_global = max(means) + max(sems)
+    
+    # Bracket 1: CFA
+    top_cfa = max(max(cfa_r), max(cfa_l))
+    draw_bracket(0, 1, p_cfa, top_cfa)
+    
+    # Bracket 2: Carr
+    top_carr = max(max(carr_r), max(carr_l))
+    draw_bracket(2.5, 3.5, p_carr, top_carr)
+    
+    # Increase Y limit slightly for brackets
+    ax.set_ylim(bottom=0, top=max(top_cfa, top_carr) * 1.15)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(labels, fontsize=fs['l'])
+    
+    ax.set_title(title, fontweight='bold', fontsize=fs['t'])
+    ax.set_ylabel(ylabel, fontweight='bold', fontsize=fs['l'])
+    ax.tick_params(axis='y', labelsize=fs['k'])
+    
+    # Legend OUTSIDE to the right
+    p1 = mpatches.Patch(color='firebrick', label='CFA (Injected)')
+    p2 = mpatches.Patch(color='#87CEEB', label='Carrageenan (Injected)')
+    p3 = mpatches.Patch(color='#D3D3D3', label='Control (Right)')
+    
+    ax.legend(handles=[p1, p2, p3], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., frameon=False, fontsize=fs['leg'])
+    
+    # Tight layout to handle outside legend
+    plt.tight_layout()
+
+    document.getElementById("plot-area").innerHTML = ""
+    display(fig, target="plot-area", append=False)
+    
+    div = document.getElementById("stats-area")
+    div.style.display = "block"
+    div.innerText = f"PAIRED T-TEST RESULTS:\n---------------------\nCFA (Right vs Left): P={p_cfa:.5f} ({'Sig*' if p_cfa<0.05 else 'ns'})\nCarr (Right vs Left): P={p_carr:.5f} ({'Sig*' if p_carr<0.05 else 'ns'})"
+
+def plot_raw_graph(title, ylabel, fs):
+    global current_fig
+    labels, values, colors = [], [], []
+    def get_lbl(name, side): return name if name.upper().endswith(side) else f"{name} ({side})"
+
+    # CFA
+    for i in range(len(STORE["CFA_R"])):
+        labels.append(get_lbl(NAMES["CFA_R"][i], "R"))
+        values.append(STORE["CFA_R"][i])
+        colors.append("#D3D3D3") 
+        
+        labels.append(get_lbl(NAMES["CFA_L"][i], "L"))
+        values.append(STORE["CFA_L"][i])
+        colors.append("firebrick") 
+
+    # Carr
+    for i in range(len(STORE["Carr_R"])):
+        labels.append(get_lbl(NAMES["Carr_R"][i], "R"))
+        values.append(STORE["Carr_R"][i])
+        colors.append("#D3D3D3") 
+        
+        labels.append(get_lbl(NAMES["Carr_L"][i], "L"))
+        values.append(STORE["Carr_L"][i])
+        colors.append("#87CEEB") 
+
+    width = max(10, len(values) * 0.7) 
+    fig, ax = plt.subplots(figsize=(width, 7))
+    current_fig = fig
+    
+    x = np.arange(len(labels))
+    ax.bar(x, values, color=colors, edgecolor='black', width=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=fs['k'])
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_title(title, fontweight='bold', fontsize=fs['t'])
+    ax.set_ylabel(ylabel, fontweight='bold', fontsize=fs['l'])
+    ax.tick_params(axis='y', labelsize=fs['k'])
+    
+    p1 = mpatches.Patch(color='firebrick', label='CFA (Injected)')
+    p2 = mpatches.Patch(color='#87CEEB', label='Carrageenan (Injected)')
+    p3 = mpatches.Patch(color='#D3D3D3', label='Right Paw (Control)')
+    
+    # Legend OUTSIDE to the right
+    ax.legend(handles=[p1, p2, p3], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., frameon=False, fontsize=fs['leg'])
+    
+    plt.tight_layout()
+    
+    document.getElementById("plot-area").innerHTML = ""
+    display(fig, target="plot-area", append=False)
+    document.getElementById("stats-area").style.display = "none"
+
+def download_plot(e):
+    if current_fig is None: return
+    buf = io.BytesIO()
+    current_fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    buf.seek(0)
+    link = document.createElement('a')
+    link.href = "data:image/png;base64," + base64.b64encode(buf.read()).decode('UTF-8')
+    link.download = "innervation_graph.png"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+async def add_cfa_l(e): await add_files("CFA_L", "in_CFA_L", "bdg_CFA_L")
+async def add_cfa_r(e): await add_files("CFA_R", "in_CFA_R", "bdg_CFA_R")
+async def add_carr_l(e): await add_files("Carr_L", "in_Carr_L", "bdg_Carr_L")
+async def add_carr_r(e): await add_files("Carr_R", "in_Carr_R", "bdg_Carr_R")
+def clr_cfa(e): clear_group("CFA")
+def clr_carr(e): clear_group("Carr")
+
+def main():
+    document.getElementById("btn_add_CFA_L").addEventListener("click", create_proxy(add_cfa_l))
+    document.getElementById("btn_add_CFA_R").addEventListener("click", create_proxy(add_cfa_r))
+    document.getElementById("btn_add_Carr_L").addEventListener("click", create_proxy(add_carr_l))
+    document.getElementById("btn_add_Carr_R").addEventListener("click", create_proxy(add_carr_r))
+    document.getElementById("btn_clr_CFA").addEventListener("click", create_proxy(clr_cfa))
+    document.getElementById("btn_clr_Carr").addEventListener("click", create_proxy(clr_carr))
+    document.getElementById("btn-run").addEventListener("click", create_proxy(run_analysis))
+    document.getElementById("btn-download").addEventListener("click", create_proxy(download_plot))
+
+main()
 </py-script>
 
+</body>
+</html>
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Figure Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --border: #e2e8f0; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 1400px; margin: 0 auto; }
+        
+        .app-container { display: flex; gap: 20px; flex-direction: column; }
+        .panel { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        h2 { margin-top:0; font-size:18px; color: #334155; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        h3 { margin: 15px 0 10px 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Configuration Flex layout */
+        .config-row { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+        
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 12px; font-weight: bold; color: #64748b; }
+        
+        /* Inputs */
+        input[type="number"], input[type="text"], select { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: inherit; }
+        input[type="color"] { padding: 2px; height: 30px; width: 50px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; }
+
+        /* Buttons */
+        button { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: inherit; transition: 0.2s; }
+        button:hover { opacity: 0.9; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button.secondary { background: #64748b; }
+        button.destructive { background: #fff; color: #ef4444; border: 1px solid #ef4444; }
+        button.destructive:hover { background: #fef2f2; }
+        
+        /* File Grid */
+        #dynamic-grid { display: grid; gap: 10px; margin-top: 20px; align-items: center; }
+        .file-drop { border: 2px dashed #cbd5e1; padding: 10px; text-align: center; border-radius: 4px; font-size: 11px; cursor: pointer; background: #fdfdfd; transition: 0.2s; position: relative; overflow: hidden; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: 500; color: #64748b; }
+        .file-drop:hover { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+        .file-drop input { opacity: 0; position: absolute; top:0; left:0; width:100%; height:100%; cursor: pointer; }
+        .file-drop.has-file { background: #dcfce7; border-color: #22c55e; border-style: solid; color: #166534; }
+
+        /* Canvas */
+        #canvas-wrapper { overflow: auto; text-align: center; background: #e5e7eb; padding: 20px; border-radius: 4px; min-height: 300px; display: flex; align-items: center; justify-content: center; border: 2px solid #eee; }
+        canvas { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 100%; background: white; }
+        .loading { display: none; margin-left: 10px; color: var(--primary); font-weight: bold; }
+        
+        /* Toggle Switch Style */
+        .toggle-wrapper { display: flex; align-items: center; gap: 8px; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; border: 1px solid #e2e8f0; height: 18px; }
+        .toggle-wrapper input { margin: 0; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="panel">
+            <h2>1. Setup Grid Dimensions</h2>
+            <div class="config-row">
+                <div class="input-group">
+                    <label>Columns (Time)</label>
+                    <input type="number" id="num-cols" value="4" min="1" max="8" style="width:60px">
+                </div>
+                <div class="input-group">
+                    <label>Rows (Channels)</label>
+                    <input type="number" id="num-rows" value="2" min="1" max="6" style="width:60px">
+                </div>
+                <div class="input-group">
+                    <label>Layout Options</label>
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="include-merge" checked> 
+                        <span style="font-size:13px; font-weight:600; color: #475569;">Include Merge Row</span>
+                    </div>
+                </div>
+                <button class="destructive" onclick="buildGridUI()" style="margin-left: auto;">Reset & Create Grid</button>
+            </div>
+        </div>
+
+        <div class="panel" id="grid-panel" style="display:none;">
+            <h2>2. Upload Images & Configure Channels</h2>
+            <div id="dynamic-grid"></div>
+        </div>
+
+        <div class="panel" id="options-panel" style="display:none;">
+            <h2>3. Figure Options</h2>
+            <div class="config-row" style="align-items: flex-start;">
+                
+                <div style="flex: 1;">
+                    <h3>Layout & Scale</h3>
+                    <div class="config-row">
+                        <div class="input-group">
+                            <label>Scale Bar (µm)</label>
+                            <input type="number" id="scale-um" value="100" style="width:70px">
+                        </div>
+                        <div class="input-group">
+                            <label>Px per µm</label>
+                            <input type="number" id="px-per-um" value="2.5" step="0.1" style="width:70px">
+                        </div>
+                        <div class="input-group">
+                            <label>Main Label</label>
+                            <input type="text" id="fig-label" value="B" style="width:40px; text-align: center;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="flex: 1; border-left: 2px solid #eee; padding-left: 20px;">
+                    <h3>Appearance Settings</h3>
+                    <div class="config-row">
+                        <div class="input-group">
+                            <label>Header Font Size</label>
+                            <input type="number" id="fs-header" value="48" style="width:60px" title="Size for column headers and main label 'B'">
+                        </div>
+                         <div class="input-group">
+                            <label>Label Font Size</label>
+                            <input type="number" id="fs-label" value="36" style="width:60px" title="Size for text inside images">
+                        </div>
+                        <div class="input-group">
+                            <label>Bar Color</label>
+                            <input type="color" id="sb-color" value="#ffff00">
+                        </div>
+                         <div class="input-group">
+                            <label>Bar Height (%)</label>
+                            <input type="number" id="sb-height" value="3" min="1" max="20" style="width:60px" title="Thickness relative to image height">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee; display: flex; justify-content: flex-end; align-items: center;">
+                 <span id="loading-msg" class="loading" style="margin-right: 15px;">Processing large images... please wait...</span>
+                <button onclick="generateFigure()" style="font-size: 16px; padding: 12px 24px;">Generate Figure</button>
+                <button class="secondary" onclick="downloadFigure()" style="margin-left: 10px; padding: 12px 24px;">Download PNG</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div id="canvas-wrapper">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let gridState = { cols: 0, rows: 0 };
+
+        // --- 1. Build Grid UI ---
+        function buildGridUI() {
+            const cols = parseInt(document.getElementById('num-cols').value);
+            const rows = parseInt(document.getElementById('num-rows').value);
+            gridState = { cols, rows };
+
+            const container = document.getElementById('dynamic-grid');
+            container.innerHTML = ''; 
+            
+            // FIXED: Widen first column to 260px to prevent overlay/cramping
+            container.style.gridTemplateColumns = `260px repeat(${cols}, 1fr)`;
+
+            // Headers
+            container.appendChild(createDiv('')); // Top-left spacer
+            for (let c = 0; c < cols; c++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = c === 0 ? "Naive" : (c === 1 ? "6h" : (c===2 ? "24h" : "7d"));
+                input.id = `lbl-col-${c}`;
+                input.style.textAlign = "center";
+                input.style.fontWeight = "bold";
+                container.appendChild(input);
+            }
+
+            // Channel Rows
+            const defaultColors = ['green', 'red', 'blue', 'magenta', 'cyan'];
+            const defaultNames = ['p-AKT', 'tdTom', 'DAPI', 'Marker', 'Marker'];
+
+            for (let r = 0; r < rows; r++) {
+                // Row Config
+                const configDiv = document.createElement('div');
+                configDiv.style.display = 'flex';
+                configDiv.style.gap = '5px';
+                configDiv.style.alignItems = 'center';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.value = defaultNames[r] || `Ch ${r+1}`;
+                nameInput.id = `lbl-row-${r}`;
+                nameInput.style.flex = "1";
+                nameInput.style.textAlign = "right";
+
+                const colorSelect = document.createElement('select');
+                colorSelect.id = `color-row-${r}`;
+                ['green', 'red', 'blue', 'magenta', 'cyan', 'yellow', 'gray'].forEach(color => {
+                    const opt = document.createElement('option');
+                    opt.value = color;
+                    opt.text = color.charAt(0).toUpperCase() + color.slice(1);
+                    if(color === defaultColors[r]) opt.selected = true;
+                    colorSelect.appendChild(opt);
+                });
+                colorSelect.style.width = "80px";
+
+                configDiv.appendChild(nameInput);
+                configDiv.appendChild(colorSelect);
+                container.appendChild(configDiv);
+
+                // File Inputs
+                for (let c = 0; c < cols; c++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'file-drop';
+                    drop.innerHTML = `<span>Drag TIF/PNG here</span><input type="file" id="file-${r}-${c}" onchange="markFile(this)">`;
+                    container.appendChild(drop);
+                }
+            }
+
+            document.getElementById('grid-panel').style.display = 'block';
+            document.getElementById('options-panel').style.display = 'block';
+        }
+
+        // --- Helpers ---
+        function createDiv(text) {
+            const d = document.createElement('div');
+            d.innerHTML = text;
+            return d;
+        }
+        function markFile(input) {
+            if(input.files && input.files[0]) {
+                input.parentElement.classList.add('has-file');
+                input.parentElement.querySelector('span').innerText = input.files[0].name;
+            }
+        }
+
+        // --- 2. Generation Logic ---
+        const COLOR_MAP = {
+            'green':   [0, 1, 0], 'red':     [1, 0, 0], 'blue':    [0, 0, 1],
+            'magenta': [1, 0, 1], 'cyan':    [0, 1, 1], 'yellow':  [1, 1, 0], 'gray':    [1, 1, 1]
+        };
+
+        async function getPixels(fileInputId) {
+            const input = document.getElementById(fileInputId);
+            if (!input || !input.files || !input.files[0]) return null;
+            const file = input.files[0];
+            const buffer = await file.arrayBuffer();
+
+            if (file.name.match(/\.tif+$/i)) {
+                const ifds = UTIF.decode(buffer);
+                UTIF.decodeImage(buffer, ifds[0]);
+                return { w: ifds[0].width, h: ifds[0].height, data: UTIF.toRGBA8(ifds[0]) };
+            } else {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const c = document.createElement('canvas');
+                        c.width = img.width; c.height = img.height;
+                        const ctx = c.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        resolve({ w: img.width, h: img.height, data: ctx.getImageData(0,0,img.width,img.height).data });
+                    };
+                    img.src = URL.createObjectURL(file);
+                });
+            }
+        }
+
+        async function generateFigure() {
+            document.getElementById('loading-msg').style.display = 'inline';
+            await new Promise(r => setTimeout(r, 50)); // Render delay
+
+            try {
+                const cols = gridState.cols;
+                const rows = gridState.rows;
+                const includeMerge = document.getElementById('include-merge').checked;
+
+                // Read Appearance Settings
+                const fsHeader = parseInt(document.getElementById('fs-header').value) || 32;
+                const fsLabel = parseInt(document.getElementById('fs-label').value) || 24;
+                const sbColor = document.getElementById('sb-color').value;
+                const sbHeightPct = (parseFloat(document.getElementById('sb-height').value) || 2) / 100;
+
+                // 1. Find dimensions
+                let baseW = 300, baseH = 300;
+                let found = false;
+                for(let r=0; r<rows; r++) {
+                    for(let c=0; c<cols; c++) {
+                        const p = await getPixels(`file-${r}-${c}`);
+                        if(p) { baseW = p.w; baseH = p.h; found = true; break; }
+                    }
+                    if(found) break;
+                }
+
+                const canvas = document.getElementById('mainCanvas');
+                const ctx = canvas.getContext('2d');
+                const pad = Math.round(baseW * 0.02); 
+                const headerH = fsHeader * 2; 
+                const totalRows = includeMerge ? rows + 1 : rows;
+
+                canvas.width = (baseW * cols) + (pad * (cols - 1));
+                canvas.height = headerH + (baseH * totalRows) + (pad * totalRows);
+
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 2. Draw Column Headers
+                ctx.fillStyle = "black";
+                ctx.font = `bold ${fsHeader}px Arial, sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                for (let c = 0; c < cols; c++) {
+                    const label = document.getElementById(`lbl-col-${c}`).value;
+                    const cx = (c * (baseW + pad)) + (baseW / 2);
+                    ctx.fillText(label, cx, headerH / 2);
+                }
+
+                // 3. Process Images
+                for (let c = 0; c < cols; c++) {
+                    const x = c * (baseW + pad);
+                    let mergeBuffer = new Float32Array(baseW * baseH * 3);
+
+                    // A. Individual Channels
+                    for (let r = 0; r < rows; r++) {
+                        const y = headerH + (r * (baseH + pad));
+                        const rawData = await getPixels(`file-${r}-${c}`);
+                        const colorName = document.getElementById(`color-row-${r}`).value;
+                        const mult = COLOR_MAP[colorName];
+                        const imgData = ctx.createImageData(baseW, baseH);
+
+                        if (rawData) {
+                            let maxVal = 1;
+                             for (let i = 0; i < rawData.data.length; i += 4) {
+                                 const val = (rawData.data[i] + rawData.data[i+1] + rawData.data[i+2]) / 3;
+                                 if(val > maxVal) maxVal = val;
+                             }
+                             const scaleFactor = 255.0 / maxVal;
+
+                            for (let i = 0; i < imgData.data.length; i += 4) {
+                                let val = (rawData.data[i] + rawData.data[i+1] + rawData.data[i+2]) / 3;
+                                val = val * scaleFactor;
+
+                                imgData.data[i]   = val * mult[0]; 
+                                imgData.data[i+1] = val * mult[1]; 
+                                imgData.data[i+2] = val * mult[2]; 
+                                imgData.data[i+3] = 255;
+
+                                if (includeMerge) {
+                                    const pIdx = (i / 4) * 3;
+                                    mergeBuffer[pIdx]   += imgData.data[i];
+                                    mergeBuffer[pIdx+1] += imgData.data[i+1];
+                                    mergeBuffer[pIdx+2] += imgData.data[i+2];
+                                }
+                            }
+                        } else {
+                            for (let i = 0; i < imgData.data.length; i += 4) { imgData.data[i+3] = 255; }
+                        }
+                        ctx.putImageData(imgData, x, y);
+                        
+                        if (c === 0) drawRowLabel(ctx, document.getElementById(`lbl-row-${r}`).value, x, y, fsLabel);
+                    }
+
+                    // B. Merge Channel
+                    if (includeMerge) {
+                        const y = headerH + (rows * (baseH + pad));
+                        const mImg = ctx.createImageData(baseW, baseH);
+                        for (let i = 0, p = 0; i < mImg.data.length; i += 4, p += 3) {
+                            mImg.data[i]   = Math.min(255, mergeBuffer[p]);
+                            mImg.data[i+1] = Math.min(255, mergeBuffer[p+1]);
+                            mImg.data[i+2] = Math.min(255, mergeBuffer[p+2]);
+                            mImg.data[i+3] = 255;
+                        }
+                        ctx.putImageData(mImg, x, y);
+                        
+                        if (c === 0) drawRowLabel(ctx, "merged", x, y, fsLabel);
+                    }
+                }
+
+                // 4. Scale Bar
+                const scaleUm = parseFloat(document.getElementById('scale-um').value);
+                const pxPerUm = parseFloat(document.getElementById('px-per-um').value);
+                const barW = scaleUm * pxPerUm;
+                const barH = baseH * sbHeightPct; 
+                
+                const finalY = headerH + ((totalRows - 1) * (baseH + pad));
+                const finalX = ((cols - 1) * (baseW + pad));
+                
+                ctx.fillStyle = sbColor;
+                ctx.fillRect(finalX + baseW - barW - (baseW*0.05), finalY + baseH - barH - (baseH*0.05), barW, barH);
+
+                // 5. Figure Label
+                const figLabel = document.getElementById('fig-label').value;
+                if(figLabel) {
+                    ctx.fillStyle = "black";
+                    ctx.font = `bold ${fsHeader * 1.2}px Arial, sans-serif`; 
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "top";
+                    ctx.fillText(figLabel, 0, 0);
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("Error: " + e.message);
+            }
+            document.getElementById('loading-msg').style.display = 'none';
+        }
+
+        function drawRowLabel(ctx, text, x, y, fontSize) {
+            ctx.save();
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = fontSize / 5;
+            ctx.shadowOffsetX = fontSize / 15; 
+            ctx.shadowOffsetY = fontSize / 15;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            const padding = 20; 
+            ctx.fillText(text, x + padding, y + padding);
+            ctx.restore();
+        }
+
+        function downloadFigure() {
+            const link = document.createElement('a');
+            link.download = 'scientific_figure.png';
+            try {
+                 link.href = document.getElementById('mainCanvas').toDataURL("image/png");
+            } catch(e) {
+                 link.href = document.getElementById('mainCanvas').toDataURL("image/jpeg", 0.9);
+            }
+            link.click();
+        }
+
+        // Init
+        buildGridUI();
+    </script>
+</body>
+</html>
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innervation Index V6.3 (Auto-Contrast Fix)</title>
+    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+    <style>
+        :root { --bg: #222; --panel: #333; --text: #eee; --accent: #00d2ff; }
+        body { margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); font-family: Helvetica, sans-serif; overflow: hidden; }
+        
+        /* Sidebar */
+        #sidebar { width: 320px; background: var(--panel); padding: 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10; }
+        h1 { margin: 0 0 10px 0; font-size: 1.2rem; border-bottom: 2px solid #555; padding-bottom: 10px; }
+        .step-info { font-size: 0.85rem; color: #aaa; margin-bottom: 10px; line-height: 1.4; }
+        
+        /* Controls */
+        label { font-size: 0.8rem; font-weight: bold; margin-top: 5px; display: block; }
+        select, input[type="text"], input[type="number"] { width: 100%; padding: 5px; background: #444; border: 1px solid #555; color: white; margin-bottom: 5px; }
+        button { padding: 8px; background: #555; border: none; color: white; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        button:hover:not(:disabled) { background: #666; }
+        button:active:not(:disabled) { background: #777; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.primary { background: #006b8f; }
+        button.primary:hover:not(:disabled) { background: #0088b6; }
+        
+        /* Sliders */
+        .slider-group { display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { flex-grow: 1; }
+        
+        /* Results Area */
+        #result-display { font-size: 1.4rem; color: var(--accent); text-align: center; font-weight: bold; margin: 15px 0; min-height: 1.5rem; }
+        .row { display: flex; gap: 5px; }
+        .row button { flex: 1; }
+
+        /* Canvas Area */
+        #main-view { flex-grow: 1; position: relative; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        canvas { position: absolute; image-rendering: pixelated; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        
+        /* Overlay UI */
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: none; align-items: center; justify-content: center; z-index: 999; font-size: 2rem; }
+    </style>
+</head>
+<body>
+
+<div id="loading">Processing...</div>
+
+<div id="sidebar">
+    <h1>INN V6.3 Web</h1>
+    <div class="step-info">
+        1. Load Folder (Select files)<br>
+        2. Adjust Filters<br>
+        3. Draw ROI & Calculate<br>
+        4. Save to Log
+    </div>
+
+    <button onclick="document.getElementById('fileInput').click()">📂 Load Files</button>
+    <input type="file" id="fileInput" webkitdirectory multiple style="display:none" onchange="handleFiles(this.files)">
+    <div id="file-status" style="font-size:0.8rem; color:#aaa;">No files loaded</div>
+
+    <hr style="width:100%; border:0; border-top:1px solid #555;">
+
+    <label>Contrast: <span id="val-contrast">1.0</span></label>
+    <input type="range" id="sl-contrast" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateFilters('contrast', this.value)">
+    
+    <label>Brightness: <span id="val-brightness">1.0</span></label>
+    <input type="range" id="sl-brightness" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateFilters('brightness', this.value)">
+    
+    <label>Noise Blur: <span id="val-blur">0.0</span></label>
+    <input type="range" id="sl-blur" min="0.0" max="5.0" step="0.5" value="0.0" oninput="updateFilters('blur', this.value)">
+
+    <label style="display:flex; align-items:center; gap:5px; margin-top:10px;">
+        <input type="checkbox" id="chk-red" onchange="render()"> Show Threshold (Red)
+    </label>
+
+    <label>Threshold Algo</label>
+    <select id="algo-select" onchange="toggleAlgo()">
+        <option value="cutoff">1-0 Cut off</option>
+        <option value="otsu">Otsu</option>
+    </select>
+    <input type="number" id="manual-cutoff" value="128" placeholder="Threshold (0-255)">
+
+    <hr style="width:100%; border:0; border-top:1px solid #555;">
+
+    <div class="row">
+        <button id="btn-zoom-in" onclick="zoomStep(1.5)">🔍 In</button>
+        <button id="btn-zoom-out" onclick="zoomStep(0.66)">🔍 Out</button>
+        <button onclick="resetView()">Reset</button>
+    </div>
+
+    <button id="btn-draw" class="primary" style="margin-top:10px;" onclick="setMode('DRAW')">✏️ Start Drawing ROI</button>
+    <button id="btn-calc" onclick="calculateIndex()" disabled>Calculate Index</button>
+
+    <div id="result-display">--</div>
+
+    <div class="row">
+        <button id="btn-save" class="primary" onclick="saveAndNext()" disabled>💾 Save & Next</button>
+        <button id="btn-discard" onclick="nextImage()" disabled>❌ Skip</button>
+    </div>
+    
+    <hr style="width:100%; border:0; border-top:1px solid #555;">
+    <button onclick="downloadLog()" style="background:#444;">⬇️ Download Results .txt</button>
+</div>
+
+<div id="main-view" onmousedown="onMouseDown(event)" onmousemove="onMouseMove(event)" onmouseup="onMouseUp(event)" oncontextmenu="return false;">
+    <canvas id="imgCanvas"></canvas>
+    <canvas id="overlayCanvas"></canvas>
+</div>
+
+<script>
+    // --- STATE ---
+    let files = [];
+    let currentIndex = 0;
+    let originalImageData = null; // The normalized raw pixel data
+    let processedCanvas = document.createElement('canvas'); // Off-screen canvas
+    
+    // Viewport
+    let scale = 1.0;
+    let panX = 0; 
+    let panY = 0;
+    
+    // Tools
+    let mode = 'VIEW'; // VIEW, DRAW
+    let polyPoints = [];
+    
+    // Params
+    let params = { contrast: 1.0, brightness: 1.0, blur: 0.0 };
+    let resultsLog = "Filename\tIndex\n------------------------------\n";
+    let lastCalcValue = null;
+
+    const imgCanvas = document.getElementById('imgCanvas');
+    const overCanvas = document.getElementById('overlayCanvas');
+    const ctxImg = imgCanvas.getContext('2d');
+    const ctxOver = overCanvas.getContext('2d');
+
+    // --- FILE HANDLING ---
+    async function handleFiles(fileList) {
+        files = Array.from(fileList).filter(f => f.name.match(/\.(tif|tiff|jpg|png|jpeg)$/i)).sort((a,b) => a.name.localeCompare(b.name));
+        if (files.length === 0) return alert("No valid images found.");
+        
+        document.getElementById('file-status').innerText = `${files.length} images loaded.`;
+        currentIndex = 0;
+        await loadImage(currentIndex);
+    }
+
+    async function loadImage(index) {
+        if (index >= files.length) return alert("All images processed!");
+        
+        showLoading(true);
+        const file = files[index];
+        document.title = `INN Web - ${file.name}`;
+        document.getElementById('file-status').innerText = `(${index+1}/${files.length}) ${file.name}`;
+        
+        // Reset Params UI
+        params = { contrast: 1.0, brightness: 1.0, blur: 0.0 };
+        document.getElementById('sl-contrast').value = 1.0; document.getElementById('val-contrast').innerText = 1.0;
+        document.getElementById('sl-brightness').value = 1.0; document.getElementById('val-brightness').innerText = 1.0;
+        document.getElementById('sl-blur').value = 0.0; document.getElementById('val-blur').innerText = 0.0;
+
+        const buffer = await file.arrayBuffer();
+        let finalImageData;
+
+        // Decode
+        if (file.name.match(/\.(tif|tiff)$/i)) {
+            const ifds = UTIF.decode(buffer);
+            UTIF.decodeImage(buffer, ifds[0]);
+            const rgba = UTIF.toRGBA8(ifds[0]); // This might be dark
+            finalImageData = new ImageData(new Uint8ClampedArray(rgba), ifds[0].width, ifds[0].height);
+        } else {
+            const blob = new Blob([buffer]);
+            const imgBitmap = await createImageBitmap(blob);
+            const tCanvas = document.createElement('canvas');
+            tCanvas.width = imgBitmap.width; tCanvas.height = imgBitmap.height;
+            const tCtx = tCanvas.getContext('2d');
+            tCtx.drawImage(imgBitmap, 0,0);
+            finalImageData = tCtx.getImageData(0,0, tCanvas.width, tCanvas.height);
+        }
+
+        // --- FIX: AUTO-NORMALIZE (Percentile Stretch) ---
+        // This fixes the "Black Image" issue by stretching the histogram
+        autoNormalize(finalImageData);
+
+        // Store Original Data
+        originalImageData = finalImageData;
+        
+        processedCanvas.width = originalImageData.width;
+        processedCanvas.height = originalImageData.height;
+        
+        // Reset UI
+        resetView(true);
+        render();
+        
+        document.getElementById('btn-calc').disabled = true;
+        document.getElementById('btn-save').disabled = true;
+        document.getElementById('btn-discard').disabled = false;
+        document.getElementById('result-display').innerText = "--";
+        lastCalcValue = null;
+        mode = 'VIEW';
+        polyPoints = [];
+        
+        showLoading(false);
+    }
+
+    function autoNormalize(imgData) {
+        const data = imgData.data;
+        // 1. Calculate Histogram
+        const hist = new Uint32Array(256);
+        let total = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            hist[data[i]]++; // Assume grayscale R=G=B
+            total++;
+        }
+        
+        // 2. Find Percentiles (2% and 98%)
+        let p2 = 0, p98 = 255, count = 0;
+        
+        // Find Lower Bound (P2)
+        for (let i = 0; i < 256; i++) {
+            count += hist[i];
+            if (count > total * 0.02) { p2 = i; break; }
+        }
+        
+        // Find Upper Bound (P98)
+        count = 0;
+        for (let i = 255; i >= 0; i--) {
+            count += hist[i];
+            if (count > total * 0.02) { p98 = i; break; }
+        }
+        
+        if (p98 <= p2) p98 = 255;
+        const range = p98 - p2;
+        const scale = 255 / (range || 1);
+        
+        // 3. Apply Stretch
+        for (let i = 0; i < data.length; i += 4) {
+            let v = data[i];
+            let n = (v - p2) * scale;
+            if (n < 0) n = 0;
+            if (n > 255) n = 255;
+            data[i] = n;
+            data[i+1] = n;
+            data[i+2] = n;
+            // Alpha stays same
+        }
+    }
+
+    function showLoading(b) { document.getElementById('loading').style.display = b ? 'flex' : 'none'; }
+
+    // --- RENDERING ---
+    function updateFilters(key, val) {
+        params[key] = parseFloat(val);
+        document.getElementById(`val-${key}`).innerText = params[key];
+        render();
+    }
+
+    function applyFiltersToData(sourceData) {
+        const w = sourceData.width;
+        const h = sourceData.height;
+        const output = new ImageData(new Uint8ClampedArray(sourceData.data), w, h);
+        const data = output.data;
+        
+        const contrastFactor = (259 * (params.contrast * 255 + 255)) / (255 * (259 - params.contrast * 255));
+        
+        for (let i = 0; i < data.length; i += 4) {
+            // Brightness
+            let r = data[i] * params.brightness;
+            let g = data[i+1] * params.brightness;
+            let b = data[i+2] * params.brightness;
+            
+            // Contrast
+            r = contrastFactor * (r - 128) + 128;
+            g = contrastFactor * (g - 128) + 128;
+            b = contrastFactor * (b - 128) + 128;
+
+            // Clamp
+            data[i] = Math.min(255, Math.max(0, r)); 
+            data[i+1] = Math.min(255, Math.max(0, g));
+            data[i+2] = Math.min(255, Math.max(0, b));
+        }
+        return output;
+    }
+
+    function render() {
+        if (!originalImageData) return;
+        
+        const filteredData = applyFiltersToData(originalImageData);
+        const pCtx = processedCanvas.getContext('2d');
+        pCtx.putImageData(filteredData, 0, 0);
+
+        const showRed = document.getElementById('chk-red').checked;
+        if (showRed) {
+            const d = pCtx.getImageData(0,0, processedCanvas.width, processedCanvas.height);
+            const pix = d.data;
+            const isOtsu = document.getElementById('algo-select').value === 'otsu';
+            let thresh = parseFloat(document.getElementById('manual-cutoff').value);
+            
+            if (isOtsu) {
+                const gray = new Uint8Array(pix.length/4);
+                for(let i=0; i<pix.length/4; i++) gray[i] = pix[i*4];
+                thresh = getOtsu(gray);
+            }
+
+            for (let i=0; i<pix.length; i+=4) {
+                if (pix[i] > thresh) {
+                    pix[i] = 255; pix[i+1] = 0; pix[i+2] = 0; // RED
+                }
+            }
+            pCtx.putImageData(d, 0, 0);
+        }
+
+        const container = document.getElementById('main-view');
+        imgCanvas.width = container.clientWidth;
+        imgCanvas.height = container.clientHeight;
+        overCanvas.width = container.clientWidth;
+        overCanvas.height = container.clientHeight;
+
+        ctxImg.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+        
+        ctxImg.save();
+        ctxImg.translate(imgCanvas.width/2 + panX, imgCanvas.height/2 + panY);
+        ctxImg.scale(scale, scale);
+        
+        if (params.blur > 0) ctxImg.filter = `blur(${params.blur}px)`;
+        
+        ctxImg.drawImage(processedCanvas, -processedCanvas.width/2, -processedCanvas.height/2);
+        ctxImg.restore();
+
+        drawOverlay();
+    }
+
+    function drawOverlay() {
+        ctxOver.clearRect(0,0, overCanvas.width, overCanvas.height);
+        if (polyPoints.length > 0) {
+            ctxOver.save();
+            ctxOver.translate(overCanvas.width/2 + panX, overCanvas.height/2 + panY);
+            ctxOver.scale(scale, scale);
+            ctxOver.translate(-processedCanvas.width/2, -processedCanvas.height/2);
+
+            ctxOver.beginPath();
+            ctxOver.moveTo(polyPoints[0].x, polyPoints[0].y);
+            for(let i=1; i<polyPoints.length; i++) ctxOver.lineTo(polyPoints[i].x, polyPoints[i].y);
+            
+            ctxOver.strokeStyle = "yellow";
+            ctxOver.lineWidth = 2 / scale;
+            ctxOver.stroke();
+
+            ctxOver.fillStyle = "cyan";
+            for(let p of polyPoints) {
+                ctxOver.beginPath();
+                ctxOver.arc(p.x, p.y, 4/scale, 0, Math.PI*2);
+                ctxOver.fill();
+            }
+            ctxOver.restore();
+        }
+    }
+
+    // --- INTERACTION ---
+    function zoomStep(factor) { scale *= factor; render(); }
+    function resetView(full = false) {
+        if (!originalImageData) return;
+        const cont = document.getElementById('main-view');
+        const scaleW = cont.clientWidth / originalImageData.width;
+        const scaleH = cont.clientHeight / originalImageData.height;
+        scale = Math.min(scaleW, scaleH) * 0.9;
+        panX = 0; panY = 0;
+        if(!full) render();
+    }
+
+    function setMode(m) {
+        mode = m; polyPoints = [];
+        document.getElementById('btn-calc').disabled = true;
+        render();
+    }
+
+    function getImgCoords(e) {
+        const r = imgCanvas.getBoundingClientRect();
+        const cx = e.clientX - r.left;
+        const cy = e.clientY - r.top;
+        const centerX = imgCanvas.width/2 + panX;
+        const centerY = imgCanvas.height/2 + panY;
+        const rawX = (cx - centerX) / scale + processedCanvas.width/2;
+        const rawY = (cy - centerY) / scale + processedCanvas.height/2;
+        return { x: rawX, y: rawY };
+    }
+
+    let isDragging = false;
+    let dragStart = {x:0, y:0};
+
+    function onMouseDown(e) {
+        if (e.button === 2) { 
+            if (mode === 'DRAW' && polyPoints.length > 2) {
+                polyPoints.push(polyPoints[0]); 
+                document.getElementById('btn-calc').disabled = false;
+                render();
+            }
+            return;
+        }
+        if (mode === 'DRAW') {
+            const p = getImgCoords(e);
+            polyPoints.push(p);
+            render();
+        } else {
+            isDragging = true;
+            dragStart = { x: e.clientX - panX, y: e.clientY - panY };
+        }
+    }
+
+    function onMouseMove(e) {
+        if (isDragging && mode === 'VIEW') {
+            panX = e.clientX - dragStart.x;
+            panY = e.clientY - dragStart.y;
+            render();
+        }
+    }
+    function onMouseUp() { isDragging = false; }
+
+    // --- MATH ---
+    function getOtsu(pixels) {
+        let hist = new Array(256).fill(0);
+        for(let p of pixels) hist[p]++;
+        let total = pixels.length, sum = 0;
+        for(let i=0; i<256; i++) sum += i * hist[i];
+        let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 0;
+        for(let t=0; t<256; t++) {
+            wB += hist[t]; if (wB === 0) continue;
+            wF = total - wB; if (wF === 0) break;
+            sumB += t * hist[t];
+            let mB = sumB / wB; let mF = (sum - sumB) / wF;
+            let varBetween = wB * wF * (mB - mF) * (mB - mF);
+            if (varBetween > varMax) { varMax = varBetween; threshold = t; }
+        }
+        return threshold;
+    }
+
+    function isInside(x, y, poly) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i].x, yi = poly[i].y;
+            const xj = poly[j].x, yj = poly[j].y;
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    function calculateIndex() {
+        if (!polyPoints.length) return;
+        showLoading(true);
+        setTimeout(() => {
+            const cleanData = applyFiltersToData(originalImageData); 
+            const pix = cleanData.data;
+            const w = cleanData.width;
+            let validPixels = [];
+            let minX=w, maxX=0, minY=cleanData.height, maxY=0;
+            for(let p of polyPoints) {
+                if(p.x < minX) minX = Math.floor(p.x);
+                if(p.x > maxX) maxX = Math.ceil(p.x);
+                if(p.y < minY) minY = Math.floor(p.y);
+                if(p.y > maxY) maxY = Math.ceil(p.y);
+            }
+            for(let y=minY; y<maxY; y++) {
+                for(let x=minX; x<maxX; x++) {
+                    if (isInside(x, y, polyPoints)) {
+                        const idx = (y*w + x) * 4;
+                        validPixels.push(pix[idx]); 
+                    }
+                }
+            }
+            if (validPixels.length === 0) {
+                alert("Area too small");
+                showLoading(false);
+                return;
+            }
+            let thresh = 0;
+            if (document.getElementById('algo-select').value === 'otsu') {
+                thresh = getOtsu(validPixels);
+            } else {
+                thresh = parseFloat(document.getElementById('manual-cutoff').value);
+            }
+            let count = validPixels.filter(v => v > thresh).length;
+            let result = (count / validPixels.length) * 100;
+            lastCalcValue = result;
+            document.getElementById('result-display').innerText = result.toFixed(4) + "%";
+            document.getElementById('btn-save').disabled = false;
+            showLoading(false);
+        }, 50);
+    }
+
+    function saveAndNext() {
+        if (lastCalcValue === null) return;
+        resultsLog += `${files[currentIndex].name}\t${lastCalcValue.toFixed(6)}\n`;
+        nextImage();
+    }
+    function nextImage() { currentIndex++; loadImage(currentIndex); }
+    function downloadLog() {
+        const blob = new Blob([resultsLog], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'innervation_results.txt';
+        a.click();
+    }
+    function toggleAlgo() {
+        const isMan = document.getElementById('algo-select').value === 'cutoff';
+        document.getElementById('manual-cutoff').style.display = isMan ? 'block' : 'none';
+        if(document.getElementById('chk-red').checked) render();
+    }
+</script>
 </body>
 </html>
