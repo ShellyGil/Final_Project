@@ -1,113 +1,114 @@
 # Nociceptor Innervation Analysis Suite
 
-## 1. Project Overview
-**Title:** Automated Quantification and Statistical Analysis of Nociceptor Innervation  
-**Author:** Shelly Gilad  
-**Course:** Python 2025  
+**Author:** Shelly Gilad
+**Course:** Python Final Project (2026)
 
-### 1.1 Motivation
-In neurobiology research, analyzing nociceptor (pain receptor) innervation patterns in tissue samples often involves laborious manual quantification. Researchers need to calculate the density of nerve fibers under various conditions (e.g., inflammation models like CFA or Carrageenan). Current manual methods are time-consuming, prone to observer bias, and lack an integrated workflow for statistical validation and figure generation.
+## Overview
 
-### 1.2 Project Goal
-The goal of this project is to develop a comprehensive, Python-based toolkit that streamlines the entire experimental workflow. The suite is composed of three integrated modules:
-1.  **Image Analysis GUI:** For calculating innervation indices from raw microscopy data.
-2.  **Statistical Dashboard:** For performing hypothesis testing (ANOVA/Tukey) and generating data plots.
-3.  **Figure Generator:** For creating publication-ready multi-channel microscopy panels.
+The **Nociceptor Innervation Analysis Suite** is a web-based application designed to streamline the quantification, statistical analysis, and visualization of histological data. Built using **PyScript**, this tool runs Python data science libraries (Pandas, Matplotlib, SciPy) directly in the browser, allowing for a seamless workflow without requiring local Python installation.
 
----
+This suite was developed to assist in neurobiology research, specifically for analyzing nociceptor innervation in mouse models (e.g., CFA and Carrageenan inflammation models).
 
-## 2. System Architecture & Modules
+## Features
 
-The project is divided into three distinct standalone applications that function as a pipeline.
+The suite consists of three integrated modules:
 
-### Module A: The Quantifier (`innervation_app.py`)
-A desktop GUI application built with **Tkinter** designed for high-throughput image processing.
-* **Key Features:**
-    * **Folder-based workflow:** Automatically loads and iterates through all images in a directory.
-    * **Image Pre-processing:** Real-time adjustment of Contrast, Brightness, and Noise Reduction (Gaussian Blur) using `Pillow`.
-    * **ROI Selection:** Supports both Polygon and Freehand drawing tools to isolate specific tissue areas (Regions of Interest).
-    * **Thresholding Algorithms:**
-        * *Manual Cutoff:* User-defined intensity threshold.
-        * *Otsu’s Method:* Automatic dynamic thresholding based on histogram bimodal distribution.
-    * **Visual Feedback:** Live red overlay of thresholded pixels for accuracy verification.
-    * **Zoom Navigation:** Custom "Zoom Select" and drag functionality for precise drawing.
+1.  **The Quantifier:** An image processing tool that calculates the percentage of innervation in microscopy images (supports `.tif`, `.jpg`, `.png`). It features contrast adjustment, noise reduction, and manual/automatic (Otsu) thresholding.
+2.  **The Analyst:** A statistical engine that performs paired t-tests on the quantified data. It generates publication-ready bar charts with significance annotations (*, **, ***).
+3.  **The Illustrator:** A figure assembly tool that arranges microscopy images into a grid, merges channels, adds scale bars, and exports high-resolution figures.
 
-### Module B: The Analyst (`innervation_analyzer.py`)
-A web-based analytical dashboard built with **Streamlit** for statistical processing.
-* **Key Features:**
-    * **Data Ingestion:** Accepts raw text files from Module A or aggregated Excel/CSV datasets.
-    * **Statistical Engine:** Automates One-Way ANOVA to test for variance and performs post-hoc Tukey HSD tests for pairwise comparisons.
-    * **Dynamic Visualization:**
-        * Generates bar charts with overlaid scatter plots (individual data points).
-        * Automatically annotates significant differences with brackets and asterisks (*, **, ***).
-    * **Reporting:** Outputs statistical summary tables ready for export.
+## Technologies Used
 
-### Module C: The Illustrator (`Fig_create.py`)
-A script for generating high-resolution, multi-channel figures using **Matplotlib**.
-* **Key Features:**
-    * **Multi-Channel Handling:** Merges Green (e.g., p-AKT) and Red (e.g., tdTomato) channels.
-    * **Normalization:** Auto-scales pixel intensity for optimal visibility.
-    * **Grid Layout:** Automatically arranges images by time-points (columns) and channels (rows).
-    * **Metadata Integration:** Adds scale bars (micron-to-pixel conversion) and labels.
-    * **Export:** Saves generic "Figure B" style layouts at 300 DPI for publication.
+* **HTML5 / CSS3 / JavaScript**: Core UI and interactivity.
+* **PyScript**: Python runtime within the browser.
+* **Python Libraries**:
+    * `pandas` & `numpy`: Data handling.
+    * `scipy`: Statistical analysis (t-tests).
+    * `matplotlib`: Plotting and figure generation.
+* **UTIF.js**: Support for TIFF image decoding.
 
 ---
 
-## 3. Technologies & Libraries
-The project utilizes the following Python libraries:
+## How to Run
 
-* **GUI & Interaction:** `tkinter`, `streamlit`
-* **Image Processing:** `Pillow` (PIL), `tifffile`
-* **Data Manipulation:** `pandas`, `numpy`
-* **Statistics:** `scipy.stats`, `statsmodels`
-* **Visualization:** `matplotlib`
+1.  Clone or download this repository.
+2.  Locate the `index.html` file.
+3.  Open `index.html` in a modern web browser (Chrome, Edge, or Firefox recommended).
+    * *Note: On first load, please wait a few seconds for the Python environment to initialize.*
 
 ---
 
-## 4. Usage Workflow
+## Step-by-Step User Guide
 
-### Step 1: Quantify Images
-Run the desktop app to process raw `.tif` or `.png` files.
-```bash
-python innervation_app.py
-```
-* Action: Draw ROI -> Calculate Index -> Save.
-* Output: A text file containing the innervation index for each image.
+Below are instructions for using each module with the provided example data.
 
-### Step 2: Analyze Data
-Upload the results to the Streamlit dashboard.
-```bash
-streamlit run innervation_analyzer.py
-```
-* Action: Upload text files for Control, CFA, and Carrageenan groups.
-* Output: Statistical P-values and an "Innervation Index" graph.
+### 1. Module A: The Quantifier (Image Analysis)
+Use this module to turn your raw microscopy images into numerical data.
 
-### Step 3: Generate Figures
-Configure the file paths in Fig_create.py and run the script to visualize the histology.
-```bash
-python Fig_create.py
-```
-* Output: A final_figure.png combining all channels and time points.
+**Example Data Location:** `example_files_for_quantifier/`
+
+1.  Click the **"1. Quantifier"** tab at the top.
+2.  Click the **📂 Load Images** button.
+3.  Select the **entire folder** named `example_files_for_quantifier` (or select all `.tif` files inside it).
+4.  **Adjust Image:**
+    * Use the **Contrast** and **Brightness** sliders to make the nerve fibers stand out.
+    * Check **"Show Threshold (Red)"** to see what the computer detects.
+    * Select **"Auto (Otsu)"** for automatic detection, or adjust the **Manual Cutoff** number until only the nerves are covered in red.
+5.  **Define Region of Interest (ROI):**
+    * Click **✏️ Draw ROI**.
+    * Click multiple points around the tissue section you want to analyze.
+    * **Right-click** to close the shape and finish drawing.
+6.  **Calculate:**
+    * Click **Calculate Index**. The result (percentage of area innervated) will appear in blue.
+    * Click **💾 Save & Next** to record this number and automatically load the next image.
+7.  **Finish:**
+    * Once all images are processed, click **⬇️ Download Log (.txt)**.
+    * Save this file. You will need these files for the next step.
+
+### 2. Module B: The Analyst (Statistics)
+Use this module to compare your experimental groups statistically.
+
+**Example Data Location:**
+* `CFA_Left/` (Injured)
+* `CFA_Right/` (Control)
+* `Carr_Left/` (Injured)
+* `Carr_Right/` (Control)
+
+1.  Click the **"2. Analyst"** tab.
+2.  Look at the sidebar on the left. You will see sections for **CFA Mice** and **Carrageenan Mice**.
+3.  **Load Data:**
+    * Under **CFA Mice > Left (Inj)**, click `Choose Files` and select the text files from your `CFA_Left` folder. Click **+ Add Left**.
+    * Repeat this for **Right (Ctrl)** using the `CFA_Right` folder.
+    * Repeat for the **Carrageenan** groups using the `Carr_Left` and `Carr_Right` folders.
+    * *Note: Ensure the badges (green numbers) show that files have been loaded.*
+4.  **Configure Plot:**
+    * In the center panel, you can change the **Title** (e.g., "Innervation Density") and **Y-Label** (e.g., "Area %").
+5.  **Run Analysis:**
+    * Click the large dark button: **GENERATE STATISTICS**.
+    * A bar chart will appear comparing the Left vs. Right sides for both groups.
+    * **Significance stars** (*, **, ***) will automatically appear if the difference is statistically significant. P-values are printed at the bottom.
+
+### 3. Module C: The Illustrator (Figure Creation)
+Use this module to create a final image grid for your report.
+
+**Example Data:** Use any representative `.tif` or `.jpg` images.
+
+1.  Click the **"3. Illustrator"** tab.
+2.  **Grid Configuration:**
+    * Set **Cols (Time)** to `4` (e.g., Naive, 24h, 48h, 7d).
+    * Set **Rows (Ch)** to `2` (e.g., PGP9.5, CGRP).
+    * Check **Include Merge** if you want a bottom row showing combined channels.
+    * Click **Create Grid**.
+3.  **Upload Images:**
+    * A grid of "Drop" boxes will appear.
+    * Click each box to upload the corresponding image for that timepoint and channel.
+4.  **Finalize:**
+    * Set the **Scale** (e.g., `100` µm) and **Px/µm** ratio (based on your microscope).
+    * Click **Render Figure**.
+    * Once the image is generated below, click **Download PNG** to save your final figure.
 
 ---
 
-## 5. Development Roadmap / Features to Implement
-* **Zoom Out logic:** Fix crop constraints to allow returning to the original image size in the GUI. (Implemented)
-* **Significance Brackets:** Algorithmically calculate the Y-position for significance brackets in Matplotlib to avoid overlap with data points. (Implemented)
-* **Otsu Thresholding:** Implement vectorised numpy calculations for fast dynamic thresholding. (Implemented)
-* **Future Work:** Add support for batch-processing ROIs without manual drawing using Deep Learning (U-Net) segmentation.
+## License
 
----
-
-## 6. Installation Requirements
-To run this suite, install the dependencies using the provided requirements.txt:
-```Plaintext
-streamlit
-pandas
-numpy
-matplotlib
-scipy
-statsmodels
-Pillow
-tifffile
-```
+This project is open-source and available under the MIT License.
