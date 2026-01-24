@@ -1,0 +1,14 @@
+MAX_C1-222_lfoot_01_001.tif 	 1.894325
+MAX_C1-222_lfoot_02_.tif 	 1.158479
+MAX_C1-222_lfoot_03_.tif 	 0.743824
+MAX_C1-222_lfoot_04_.tif 	 0.880275
+MAX_C1-222_lfoot_05_.tif 	 0.435521
+MAX_C1-222_lfoot_06_.tif 	 0.445560
+MAX_C1-222_lfoot_07_.tif 	 0.856421
+MAX_C1-222_lfoot_08_.tif 	 0.871774
+MAX_C1-222_lfoot_09_.tif 	 0.584639
+MAX_C1-222_lfoot_09_001.tif 	 1.464555
+MAX_C1-222_lfoot_10_.tif 	 0.866566
+MAX_C1-222_lfoot_11_.tif 	 1.204089
+MAX_C1-222_lfoot_12_.tif 	 0.914413
+MAX_C1-222_lfoot_13_.tif 	 0.489530

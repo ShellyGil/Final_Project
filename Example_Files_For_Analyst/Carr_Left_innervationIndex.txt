@@ -1,0 +1,10 @@
+MAX_C1-223_lfoot_01_.tif 	 9.252870
+MAX_C1-223_lfoot_01_.tif 	 7.250563
+MAX_C1-223_lfoot_01_.tif 	 7.685098
+MAX_C1-223_lfoot_02_.tif 	 5.721613
+MAX_C1-223_lfoot_03_.tif 	 4.482155
+MAX_C1-223_lfoot_04_.tif 	 7.493452
+MAX_C1-223_lfoot_05_.tif 	 2.251266
+MAX_C1-223_lfoot_06_.tif 	 4.313828
+MAX_C1-223_lfoot_07_.tif 	 4.422842
+MAX_C1-223_lfoot_08_.tif 	 7.948596
